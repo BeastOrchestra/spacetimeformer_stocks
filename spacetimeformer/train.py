@@ -650,11 +650,11 @@ def create_dset(config):
 
         elif config.dset == "stocks":
             if config.phase == "train":
-                data_path = './data/train'
+                data_path = 'spacetimeformer/data/train'
             elif config.phase == "test":
-                data_path = './data/test'
+                data_path = 'spacetimeformer/data/test'
             else:
-                data_path = './data/oos'  # Assume 'oos' is for out-of-sample or validation
+                data_path = 'spacetimeformer/data/oos'  # Assume 'oos' is for out-of-sample or validation
 
             # data_module = TimeSeriesDataset(data_folder=data_path, context_length=config.context_points, forecast_length=config.target_points)
             # data_loader = DataLoader(data_module, batch_size=config.batch_size, shuffle=True)
