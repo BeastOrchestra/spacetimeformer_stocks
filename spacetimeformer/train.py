@@ -807,6 +807,8 @@ def main(args):
     else:
         # Standard DataModule for other datasets
         data_module, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
+        args.null_value = null_val
+        args.pad_value = pad_val
 
     # Model Training and Evaluation
     forecaster = create_model(args)
