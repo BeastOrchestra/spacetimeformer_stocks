@@ -815,16 +815,26 @@ def main(args):
 
     if args.dset == "stocks":
         # Custom Training Loop for 'stocks'
+        optimizer = torch.optim.Adam(forecaster.parameters(), lr=args.learning_rate)
+        loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
+
         for epoch in range(args.epochs):
-            1+1
-            # Training Phase
-            # Include your training logic here using train_loader
+            forecaster.train()  # Set the model to training mode
+            total_train_loss = 0
+            for batch_idx, (context, forecast) in enumerate(train_loader):
+                context, forecast = context.to(device), forecast.to(device)
+                optimizer.zero_grad()
+                predictions = forecaster(context)
+                loss = loss_function(predictions, forecast)
+                loss.backward()
+                optimizer.step()
+                total_train_loss += loss.item()
 
-            # Validation Phase (Optional)
-            # Include your validation logic here using test_loader
+            average_train_loss = total_train_loss / len(train_loader)
+            print(f"Epoch {epoch}, Training Loss: {average_train_loss}")
 
-            # Out-of-Sample Testing Phase (Optional)
-            # Include your testing logic here using oos_loader
+            # Logging and callbacks can be added here as per requirement
+
     else:
         # Standard Training with PyTorch Lightning for other datasets
         forecaster.set_inv_scaler(inv_scaler)
@@ -854,6 +864,7 @@ if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
     main(args)
+
 
 # if __name__ == "__main__":
 #     # CLI
