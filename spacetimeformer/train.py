@@ -649,6 +649,7 @@ def create_dset(config):
             ]
 
         elif config.dset == "stocks":
+            config.phase = "train"
             if config.phase == "train":
                 data_path = 'spacetimeformer/data/train'
             elif config.phase == "test":
