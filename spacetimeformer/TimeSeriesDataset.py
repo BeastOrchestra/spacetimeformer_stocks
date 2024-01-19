@@ -15,7 +15,6 @@ class TimeSeriesDataset(Dataset):
         all_files = [os.path.join(folder, file) for file in os.listdir(folder) if file.endswith('.csv')]
         return [pd.read_csv(file, index_col=0).values for file in all_files]  # Treat the first column as index
 
-
     def get_cumulative_lengths(self, data_files):
         lengths = [len(file) - (self.context_length + self.forecast_length) for file in data_files]
         return np.cumsum([0] + lengths)
@@ -30,13 +29,14 @@ class TimeSeriesDataset(Dataset):
         forecast = self.data_files[file_index][within_file_idx+self.context_length:within_file_idx+self.context_length+self.forecast_length]
         return torch.tensor(context, dtype=torch.float), torch.tensor(forecast, dtype=torch.float)
 # Create DataLoaders for each dataset
-train_dataset = TimeSeriesDataset(data_folder='./spacetimeformer/data/train', context_length=10, forecast_length=10)
+
+train_dataset = TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=10, forecast_length=10)
 train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
-test_dataset = TimeSeriesDataset(data_folder='./spacetimeformer/data/test', context_length=10, forecast_length=10)
+test_dataset = TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=10, forecast_length=10)
 test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-oos_dataset = TimeSeriesDataset(data_folder='./spacetimeformer/data/oos', context_length=10, forecast_length=10)
+oos_dataset = TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=10, forecast_length=10)
 oos_dataloader = DataLoader(oos_dataset, batch_size=32, shuffle=False)
 
 # Example of iterating over a DataLoader
