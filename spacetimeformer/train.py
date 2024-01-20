@@ -59,6 +59,9 @@ def create_parser():
                             help="Path to the test data for the 'stocks' dataset")
         parser.add_argument("--oos_data_path", type=str, default="spacetimeformer/data/oos",
                             help="Path to the out-of-sample data for the 'stocks' dataset")
+        parser.add_argument("--context_points", type=int, required=True, help="Number of context points")
+        parser.add_argument("--target_points", type=int, required=True, help="Number of target points to predict")
+
     elif dset == "precip":
         stf.data.precip.GeoDset.add_cli(parser)
         stf.data.precip.CONUS_Precip.add_cli(parser)
