@@ -849,6 +849,17 @@ def main(args):
             forecaster.train()  # Set the model to training mode
             total_train_loss = 0
             for batch_idx, (context, forecast) in enumerate(train_loader):
+                # You need to unpack your batch into x_c, y_c, x_t, y_t
+                print(train_loader)
+                print(np.shape(train_loader))
+                # x_c = train_loader  # Extract context features from 'context'
+                # y_c = ...  # Extract context target values from 'context'
+                # x_t = ...  # Extract target features from 'forecast'
+                # y_t = ...  # Extract target target values from 'forecast'
+
+                predictions = forecaster(x_c, y_c, x_t, y_t)
+                loss = loss_function(predictions, y_t) 
+
                 context, forecast = context.to(device), forecast.to(device)
                 optimizer.zero_grad()
                 predictions = forecaster(context)
