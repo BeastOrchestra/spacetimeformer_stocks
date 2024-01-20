@@ -61,6 +61,7 @@ def create_parser():
                             help="Path to the out-of-sample data for the 'stocks' dataset")
         parser.add_argument("--context_points", type=int, required=True, help="Number of context points")
         parser.add_argument("--target_points", type=int, required=True, help="Number of target points to predict")
+        parser.add_argument("--epochs", type=int, required=True, help="Number of training epochs")
 
     elif dset == "precip":
         stf.data.precip.GeoDset.add_cli(parser)
