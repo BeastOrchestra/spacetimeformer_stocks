@@ -52,7 +52,14 @@ def create_parser():
     parser.add_argument("model")
     parser.add_argument("dset")
 
-    if dset == "precip":
+    if dset == "stocks":
+        parser.add_argument("--train_data_path", type=str, default="spacetimeformer/data/train",
+                            help="Path to the training data for the 'stocks' dataset")
+        parser.add_argument("--test_data_path", type=str, default="spacetimeformer/data/test",
+                            help="Path to the test data for the 'stocks' dataset")
+        parser.add_argument("--oos_data_path", type=str, default="spacetimeformer/data/oos",
+                            help="Path to the out-of-sample data for the 'stocks' dataset")
+    elif dset == "precip":
         stf.data.precip.GeoDset.add_cli(parser)
         stf.data.precip.CONUS_Precip.add_cli(parser)
     elif dset == "metr-la" or dset == "pems-bay":
@@ -80,6 +87,7 @@ def create_parser():
         stf.data.CSVTimeSeries.add_cli(parser)
         stf.data.CSVTorchDset.add_cli(parser)
     stf.data.DataModule.add_cli(parser)
+
 
     if model == "lstm":
         stf.lstm_model.LSTM_Forecaster.add_cli(parser)
@@ -649,6 +657,7 @@ def create_dset(config):
             ]
 
         elif config.dset == "stocks":
+            config.phase = "train"
             if config.phase == "train":
                 data_path = 'spacetimeformer/data/train'
             elif config.phase == "test":
@@ -801,11 +810,15 @@ def main(args):
     # Data Preparation
     if args.dset == "stocks":
         # Custom DataLoader for 'stocks'
-        args.null_value = NULL_VAL
+        args.null_value = None # NULL_VAL
         # args.pad_value = pad_val
-        train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=True)
-        test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
-        oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
+        train_loader = DataLoader(TimeSeriesDataset(data_folder=args.train_data_path,
+                                                    context_length=args.context_points,
+                                                    forecast_length=args.target_points),
+                                  batch_size=args.batch_size, shuffle=True)
+        # train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=True)
+        # test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
+        # oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
     else:
         # Standard DataModule for other datasets
         data_module, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
