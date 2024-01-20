@@ -798,6 +798,7 @@ def create_callbacks(config, save_dir):
 def main(args):
     # Initialization and Setup
     log_dir = os.getenv("STF_LOG_DIR", "./data/STF_LOG_DIR")
+    args.use_gpu = True
     device = torch.device("cuda" if torch.cuda.is_available() and args.use_gpu else "cpu")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
