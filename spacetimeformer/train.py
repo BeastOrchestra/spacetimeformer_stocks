@@ -811,6 +811,7 @@ def main(args):
     if args.dset == "stocks":
         # Custom DataLoader for 'stocks'
         args.null_value = None # NULL_VAL
+        args.pad_value = None
         # args.pad_value = pad_val
         train_loader = DataLoader(TimeSeriesDataset(data_folder=args.train_data_path,
                                                     context_length=args.context_points,
@@ -823,9 +824,7 @@ def main(args):
         train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=True)
         test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
         oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
-        data_loader, data_module, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
-        args.null_value = null_val
-        args.pad_value = pad_val
+        # data_loader, data_module, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
     else:
         # Standard DataModule for other datasets
         data_module, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
