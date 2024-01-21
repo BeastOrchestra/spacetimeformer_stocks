@@ -842,6 +842,7 @@ def main(args):
 
     # Model Training and Evaluation
     forecaster = create_model(args)
+    forecaster = forecaster.to(device)  # Move the model to the specified device
 
     if args.dset == "stocks":
         # Custom Training Loop for 'stocks'
