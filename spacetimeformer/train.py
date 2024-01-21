@@ -874,26 +874,35 @@ def main(args):
                 total_train_loss += loss.item()
 
             average_train_loss = total_train_loss / len(train_loader)
-            print(f"Epoch {epoch}, Training Loss: {average_train_loss}")
+            # print(f"Epoch {epoch}, Training Loss: {average_train_loss}")
 
             # Test Phase
             forecaster.eval()
             total_test_loss = 0
             with torch.no_grad():
-                for x_c, y_c, x_t, y_t in test_loader:
+                for context, forecast in test_loader:
+                    x_c = context[:, :, :]
+                    y_c = context[:, :, [3, 4]]
+                    x_t = forecast[:, :, :]
+                    y_t = forecast[:, :, [3, 4]]
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
+                    
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
                     test_loss = loss_function(predictions, y_t)
                     total_test_loss += test_loss.item()
 
             average_test_loss = total_test_loss / len(test_loader)
-            print(f"Epoch {epoch}, Test Loss: {average_test_loss}")
+            # print(f"Epoch {epoch}, Test Loss: {average_test_loss}")
 
             # Out-of-Sample Phase
             total_oos_loss = 0
             with torch.no_grad():
-                for x_c, y_c, x_t, y_t in oos_loader:
+                for context, forecast in oos_loader:
+                    x_c = context[:, :, :]
+                    y_c = context[:, :, [3, 4]]
+                    x_t = forecast[:, :, :]
+                    y_t = forecast[:, :, [3, 4]]
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
@@ -901,7 +910,10 @@ def main(args):
                     total_oos_loss += oos_loss.item()
 
             average_oos_loss = total_oos_loss / len(oos_loader)
-            print(f"Epoch {epoch}, Out-of-Sample Loss: {average_oos_loss}")
+            print(f"Epoch {epoch}, 
+                  Training Loss: {average_train_loss},
+                  Test Loss: {average_test_loss}, 
+                  Out-of-Sample Loss: {average_oos_loss}")
 
     else:
         # Standard Training with PyTorch Lightning for other datasets
