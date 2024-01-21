@@ -798,14 +798,14 @@ def create_callbacks(config, save_dir):
 def append_to_csv(y_t, predictions, csv_file='predictions.csv'):
     # Assuming y_t and predictions are of shape [1, 10, 2]
     # Reshape tensors to [10, 2]
-    y_t = y_t.squeeze(0)
-    predictions = predictions.squeeze(0)
+    y_t = y_t.view(-1, 2)
+    predictions = predictions.view(-1, 2)
 
-    # Concatenate along the second dimension to get [10, 4]
+    # Concatenate along the second dimension to get [240, 4]
     combined = torch.cat((y_t, predictions), dim=1)
 
     # Convert to Pandas DataFrame
-    df = pandas.DataFrame(combined.cpu().numpy(), columns=['y_t_1', 'y_t_2', 'pred_1', 'pred_2'])
+    df = pd.DataFrame(combined.cpu().numpy(), columns=['y_t_1', 'y_t_2', 'pred_1', 'pred_2'])
 
     # Append to CSV
     df.to_csv(csv_file, mode='a', header=not os.path.exists(csv_file), index=False)
