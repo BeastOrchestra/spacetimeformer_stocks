@@ -910,10 +910,10 @@ def main(args):
                     total_oos_loss += oos_loss.item()
 
             average_oos_loss = total_oos_loss / len(oos_loader)
-            print(f"Epoch {epoch}, 
-                  Training Loss: {average_train_loss},
-                  Test Loss: {average_test_loss}, 
-                  Out-of-Sample Loss: {average_oos_loss}")
+            print(f"Epoch {epoch}, "
+                f"Training Loss: {average_train_loss}, "
+                f"Test Loss: {average_test_loss}, "
+                f"Out-of-Sample Loss: {average_oos_loss}")
 
     else:
         # Standard Training with PyTorch Lightning for other datasets
