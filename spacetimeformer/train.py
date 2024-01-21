@@ -871,7 +871,8 @@ def main(args):
                 # Adjust slicing according to your data structure
                 x_c = context[:, :, :]  # Context features
                 y_c = context[:, :, [3, 4]]  # Context targets
-                x_t = forecast[:, :, :]  # Target features
+                # x_t = forecast[:, :, :]  # Target features
+                x_t = context[:, :, :]  # Target features
                 y_t = forecast[:, :, [3, 4]]  # Target targets
 
                 # Move data to the appropriate device
@@ -897,7 +898,8 @@ def main(args):
                 for context, forecast in test_loader:
                     x_c = context[:, :, :]
                     y_c = context[:, :, [3, 4]]
-                    x_t = forecast[:, :, :]
+                    # x_t = forecast[:, :, :]
+                    x_t = context[:, :, :]
                     y_t = forecast[:, :, [3, 4]]
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     
@@ -917,7 +919,8 @@ def main(args):
                 for context, forecast in oos_loader:
                     x_c = context[:, :, :]
                     y_c = context[:, :, [3, 4]]
-                    x_t = forecast[:, :, :]
+                    # x_t = forecast[:, :, :] # Original
+                    x_t = context[:, :, :] # intended to eliminate data snooping
                     y_t = forecast[:, :, [3, 4]]
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     model_output = forecaster(x_c, y_c, x_t, y_t)
