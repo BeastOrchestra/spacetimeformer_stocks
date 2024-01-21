@@ -11,7 +11,8 @@ import torch
 import spacetimeformer as stf
 from TimeSeriesDataset import TimeSeriesDataset
 from torch.utils.data import DataLoader
-
+import csv
+import pandas
 _MODELS = ["spacetimeformer", "mtgnn", "heuristic", "lstm", "lstnet", "linear", "s4"]
 
 _DSETS = [
@@ -794,6 +795,21 @@ def create_callbacks(config, save_dir):
         )
     return callbacks
 
+def append_to_csv(y_t, predictions, csv_file='predictions.csv'):
+    # Assuming y_t and predictions are of shape [1, 10, 2]
+    # Reshape tensors to [10, 2]
+    y_t = y_t.squeeze(0)
+    predictions = predictions.squeeze(0)
+
+    # Concatenate along the second dimension to get [10, 4]
+    combined = torch.cat((y_t, predictions), dim=1)
+
+    # Convert to Pandas DataFrame
+    df = pandas.DataFrame(combined.cpu().numpy(), columns=['y_t_1', 'y_t_2', 'pred_1', 'pred_2'])
+
+    # Append to CSV
+    df.to_csv(csv_file, mode='a', header=not os.path.exists(csv_file), index=False)
+
 
 def main(args):
     # Initialization and Setup
@@ -897,6 +913,8 @@ def main(args):
 
             # Out-of-Sample Phase
             total_oos_loss = 0
+            oos_results = []
+
             with torch.no_grad():
                 for context, forecast in oos_loader:
                     x_c = context[:, :, :]
@@ -906,14 +924,22 @@ def main(args):
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+                    # oos_results.append((y_t.cpu().numpy(), predictions.cpu().numpy()))
                     oos_loss = loss_function(predictions, y_t)
                     total_oos_loss += oos_loss.item()
+                    append_to_csv(y_t, predictions, csv_file='predictions.csv')
 
             average_oos_loss = total_oos_loss / len(oos_loader)
             print(f"Epoch {epoch}, "
                 f"Training Loss: {average_train_loss}, "
                 f"Test Loss: {average_test_loss}, "
                 f"Out-of-Sample Loss: {average_oos_loss}")
+            # with open('oos_results.csv', 'w', newline='') as file:
+            #     writer = csv.writer(file)
+            #     writer.writerow(['Actual', 'Predicted'])  # Header
+            #     for actual, predicted in oos_results:
+            #         for a, p in zip(actual, predicted):
+            #             writer.writerow([a, p])
 
     else:
         # Standard Training with PyTorch Lightning for other datasets
