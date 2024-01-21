@@ -852,38 +852,28 @@ def main(args):
             forecaster.train()  # Set the model to training mode
             total_train_loss = 0
             for batch_idx, (context, forecast) in enumerate(train_loader):
-                # You need to unpack your batch into x_c, y_c, x_t, y_t
-                # print(train_loader)
-                # print(np.shape(train_loader))
+                # Unpack your batch into x_c, y_c, x_t, y_t
+                # Adjust slicing according to your data structure
+                x_c = context[:, :, :]  # Context features
+                y_c = context[:, :, [3, 4]]  # Context targets
+                x_t = forecast[:, :, :]  # Target features
+                y_t = forecast[:, :, [3, 4]]  # Target targets
 
-                x_c = context[:, :, :] 
-                y_c = context[:, :, [3, 4]] 
-                x_t = forecast[:, :, :]
-                y_t = forecast[:, :, [3, 4]]
+                # Move data to the appropriate device
+                x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
 
-                # predictions = forecaster(x_c, y_c, x_t, y_t)
-                # loss = loss_function(predictions, y_t) 
-                # Forward pass through the model
+                optimizer.zero_grad()
                 model_output = forecaster(x_c, y_c, x_t, y_t)
-                
                 # Extract predictions from model output
                 predictions = model_output[0] if isinstance(model_output, tuple) else model_output
                 # Calculate loss
                 loss = loss_function(predictions, y_t)
-
-    
-                context, forecast = context.to(device), forecast.to(device)
-                optimizer.zero_grad()
-                predictions = forecaster(context)
-                loss = loss_function(predictions, forecast)
                 loss.backward()
                 optimizer.step()
                 total_train_loss += loss.item()
 
             average_train_loss = total_train_loss / len(train_loader)
             print(f"Epoch {epoch}, Training Loss: {average_train_loss}")
-
-            # Logging and callbacks can be added here as per requirement
 
     else:
         # Standard Training with PyTorch Lightning for other datasets
