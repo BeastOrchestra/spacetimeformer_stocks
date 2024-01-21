@@ -861,9 +861,17 @@ def main(args):
                 x_t = forecast[:, :, :]
                 y_t = forecast[:, :, [3, 4]]
 
-                predictions = forecaster(x_c, y_c, x_t, y_t)
-                loss = loss_function(predictions, y_t) 
+                # predictions = forecaster(x_c, y_c, x_t, y_t)
+                # loss = loss_function(predictions, y_t) 
+                # Forward pass through the model
+                model_output = forecaster(x_c, y_c, x_t, y_t)
+                
+                # Extract predictions from model output
+                predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+                # Calculate loss
+                loss = loss_function(predictions, y_t)
 
+    
                 context, forecast = context.to(device), forecast.to(device)
                 optimizer.zero_grad()
                 predictions = forecaster(context)
