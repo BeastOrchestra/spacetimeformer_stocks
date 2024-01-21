@@ -157,8 +157,8 @@ def create_model(config):
         yt_dim = 137
     elif config.dset == "stocks":
         x_dim = 95
-        yc_dim = 95 # Can reduce to specific features. i.e you could forecast only 'Close' (yc_dim=1)
-        yt_dim = 95
+        yc_dim = 2 # Can reduce to specific features. i.e you could forecast only 'Close' (yc_dim=1)
+        yt_dim = 2
     elif config.dset == "exchange":
         x_dim = 6
         yc_dim = 8
@@ -830,6 +830,9 @@ def main(args):
         train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=True)
         test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
         oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
+
+
+
         # data_loader, data_module, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
     else:
         # Standard DataModule for other datasets
@@ -850,12 +853,13 @@ def main(args):
             total_train_loss = 0
             for batch_idx, (context, forecast) in enumerate(train_loader):
                 # You need to unpack your batch into x_c, y_c, x_t, y_t
-                print(train_loader)
-                print(np.shape(train_loader))
-                # x_c = train_loader  # Extract context features from 'context'
-                # y_c = ...  # Extract context target values from 'context'
-                # x_t = ...  # Extract target features from 'forecast'
-                # y_t = ...  # Extract target target values from 'forecast'
+                # print(train_loader)
+                # print(np.shape(train_loader))
+
+                x_c = context[:, :, :] 
+                y_c = context[:, :, [3, 4]] 
+                x_t = forecast[:, :, :]
+                y_t = forecast[:, :, [3, 4]]
 
                 predictions = forecaster(x_c, y_c, x_t, y_t)
                 loss = loss_function(predictions, y_t) 
