@@ -845,9 +845,7 @@ def main(args):
         test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
         oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
 
-
-
-        # data_loader, data_module, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
+        # data_loader, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
     else:
         # Standard DataModule for other datasets
         data_module, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
@@ -873,7 +871,7 @@ def main(args):
                 y_c = context[:, :, [3, 4]]  # Context targets
                 # x_t = forecast[:, :, :]  # Target features
                 x_t = context[:, :, :]  # Target features
-                y_t = forecast[:, :, [3, 4]]  # Target targets
+                y_t = forecast[:, :, [3, 4]]/context[:, -1, [3, 4]] - 1 # Target targets
 
                 # Move data to the appropriate device
                 x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
@@ -900,7 +898,7 @@ def main(args):
                     y_c = context[:, :, [3, 4]]
                     # x_t = forecast[:, :, :]
                     x_t = context[:, :, :]
-                    y_t = forecast[:, :, [3, 4]]
+                    y_t = forecast[:, :, [3, 4]]/context[:, -1, [3, 4]] - 1 
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
@@ -921,7 +919,7 @@ def main(args):
                     y_c = context[:, :, [3, 4]]
                     # x_t = forecast[:, :, :] # Original
                     x_t = context[:, :, :] # intended to eliminate data snooping
-                    y_t = forecast[:, :, [3, 4]]
+                    y_t = forecast[:, :, [3, 4]]/context[:, -1, [3, 4]] - 1 
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
