@@ -911,24 +911,31 @@ def main(args):
 
             # Out-of-Sample Phase
             total_oos_loss = 0
+
             oos_results = []
 
+            # Out-of-Sample Phase
+            total_oos_loss = 0
+            forecaster.eval()
             with torch.no_grad():
                 for context, forecast in oos_loader:
-                    x_c = context[:, :, :]
-                    y_c = context[:, :, [3, 4]]
-                    # x_t = forecast[:, :, :] # Original
-                    x_t = context[:, :, :] # intended to eliminate data snooping
-                    y_t = forecast[:, :, [3, 4]]
-                    x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
-                    model_output = forecaster(x_c, y_c, x_t, y_t)
-                    predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-                    # oos_results.append((y_t.cpu().numpy(), predictions.cpu().numpy()))
+                    # ... [code to prepare and forward pass through the model] ...
                     oos_loss = loss_function(predictions, y_t)
                     total_oos_loss += oos_loss.item()
-                    append_to_csv(y_t, predictions, csv_file='predictions.csv')
 
+                    # Store results for each batch
+                    actual = y_t.cpu().numpy()
+                    pred = predictions.cpu().numpy()
+                    oos_results.extend(zip(actual.reshape(-1, 2), pred.reshape(-1, 2)))
             average_oos_loss = total_oos_loss / len(oos_loader)
+
+            # Save OOS results to CSV at the end of each epoch
+            with open(f'predictions_epoch_{epoch}.csv', 'w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(['Actual_price', 'Actual_volatility', 'Predicted_price', 'Predicted_volatility'])  # Header
+                for actual, predicted in oos_results:
+                    writer.writerow([*actual, *predicted])
+
             print(f"Epoch {epoch}, "
                 f"Training Loss: {average_train_loss}, "
                 f"Test Loss: {average_test_loss}, "
