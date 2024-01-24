@@ -869,8 +869,8 @@ def main(args):
 
                 # x_t = context[:, :, :]  # Target features
                 # y_t = forecast[:, :, [3, 4]] # Target targets
-                x_t = context[:, -args.forecast_length:, :]  # Target features
-                y_t = forecast[:, :args.forecast_length, [3, 4]] # Target targets
+                x_t = context[:, -args.target_points:, :]  # Target features
+                y_t = forecast[:, :args.target_points, [3, 4]] # Target targets
                 # Move data to the appropriate device
                 x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
 
@@ -895,8 +895,8 @@ def main(args):
                     x_c = context[:, :, :]
                     y_c = context[:, :, [3, 4]]
                     # x_t = forecast[:, :, :]
-                    x_t = context[:, -args.forecast_length:, :]
-                    y_t = forecast[:, :args.forecast_length, [3, 4]]
+                    x_t = context[:, -args.target_points:, :]
+                    y_t = forecast[:, :args.target_points, [3, 4]]
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
@@ -920,8 +920,8 @@ def main(args):
                     x_c = context[:, :, :]
                     y_c = context[:, :, [3, 4]]
                     # x_t = forecast[:, :, :]
-                    x_t = context[:, -args.forecast_length:, :]
-                    y_t = forecast[:, :args.forecast_length, [3, 4]]
+                    x_t = context[:, -args.target_points:, :]
+                    y_t = forecast[:, :args.target_points, [3, 4]]
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
