@@ -13,6 +13,7 @@ from TimeSeriesDataset import TimeSeriesDataset
 from torch.utils.data import DataLoader
 import csv
 import pandas
+import numpy as np
 _MODELS = ["spacetimeformer", "mtgnn", "heuristic", "lstm", "lstnet", "linear", "s4"]
 
 _DSETS = [
@@ -833,10 +834,10 @@ def main(args):
         args.null_value = None # NULL_VAL
         args.pad_value = None
         # args.pad_value = pad_val
-        train_loader = DataLoader(TimeSeriesDataset(data_folder=args.train_data_path,
-                                                    context_length=args.context_points,
-                                                    forecast_length=args.target_points),
-                                  batch_size=args.batch_size, shuffle=True)
+        # train_loader = DataLoader(TimeSeriesDataset(data_folder=args.train_data_path,
+        #                                             context_length=args.context_points,
+        #                                             forecast_length=args.target_points),
+        #                           batch_size=args.batch_size, shuffle=True)
 
         train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=True)
         test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
@@ -871,6 +872,7 @@ def main(args):
                 # y_t = forecast[:, :, [3, 4]] # Target targets
                 x_t = context[:, -args.target_points:, :]  # Target features
                 y_t = forecast[:, :args.target_points, [3, 4]] # Target targets
+                print('train: ',np.shape(y_t))
                 # Move data to the appropriate device
                 x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
 
@@ -897,6 +899,7 @@ def main(args):
                     # x_t = forecast[:, :, :]
                     x_t = context[:, -args.target_points:, :]
                     y_t = forecast[:, :args.target_points, [3, 4]]
+                    print('test: ',np.shape(y_t))
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
@@ -922,6 +925,7 @@ def main(args):
                     # x_t = forecast[:, :, :]
                     x_t = context[:, -args.target_points:, :]
                     y_t = forecast[:, :args.target_points, [3, 4]]
+                    print('oos: ',np.shape(y_t))
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
