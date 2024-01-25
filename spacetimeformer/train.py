@@ -665,14 +665,12 @@ def create_dset(config):
         elif config.dset == "stocks":
             config.phase = "train"
             if config.phase == "train":
-                data_path = 'spacetimeformer/data/train'
+                data_path = 'spacetimeformer/data/train' # train
             elif config.phase == "test":
-                data_path = 'spacetimeformer/data/test'
+                data_path = 'spacetimeformer/data/test' # test
             else:
-                data_path = 'spacetimeformer/data/oos'  # Assume 'oos' is for out-of-sample or validation
+                data_path = 'spacetimeformer/data/oos'  # out-of-sample or validation
 
-            # data_module = TimeSeriesDataset(data_folder=data_path, context_length=config.context_points, forecast_length=config.target_points)
-            # data_loader = DataLoader(data_module, batch_size=config.batch_size, shuffle=True)
             data_module = TimeSeriesDataset(data_folder=data_path, context_length=config.context_points, forecast_length=config.target_points)
             data_loader = DataLoader(data_module, batch_size=config.batch_size, shuffle=True if config.phase == "train" else False)
             target_cols = ['open', 'high', 'low', 'Close', 'vclose', 'vopen', 'vhigh', 'vlow',
@@ -797,17 +795,15 @@ def create_callbacks(config, save_dir):
     return callbacks
 
 def append_to_csv(y_t, predictions, csv_file='predictions.csv'):
-    # Assuming y_t and predictions are of shape [1, 10, 2]
-    # Reshape tensors to [10, 2]
+    # Reshape tensors
     y_t = y_t.reshape(-1, 2)
     predictions = predictions.reshape(-1, 2)
-    # Concatenate along the second dimension to get [10*batchSize, 4]
+    # Concatenate along the second dimension
     combined = torch.cat((y_t, predictions), dim=1)
     # Convert to Pandas DataFrame
     df = pandas.DataFrame(combined.cpu().numpy(), columns=['y_t_1', 'y_t_2', 'pred_1', 'pred_2'])
     # Append to CSV
     df.to_csv(csv_file, mode='a', header=not os.path.exists(csv_file), index=False)
-
 
 
 def main(args):
@@ -947,16 +943,11 @@ def main(args):
                 f"Training Loss: {average_train_loss}, "
                 f"Test Loss: {average_test_loss}, "
                 f"Out-of-Sample Loss: {average_oos_loss}")
-            # with open('oos_results.csv', 'w', newline='') as file:
-            #     writer = csv.writer(file)
-            #     writer.writerow(['Actual', 'Predicted'])  # Header
-            #     for actual, predicted in oos_results:
-            #         for a, p in zip(actual, predicted):
-            #             writer.writerow([a, p])
+
         # Save a checkpoint after each epoch
-        checkpoint_path = os.path.join(log_dir, f'checkpoint_epoch_{epoch}.pth')
-        torch.save(forecaster.state_dict(), checkpoint_path)
-        print(f"Checkpoint saved to {checkpoint_path}")
+            checkpoint_path = os.path.join(log_dir, f'checkpoint_epoch_{epoch}.pth')
+            torch.save(forecaster.state_dict(), checkpoint_path)
+            print(f"Checkpoint saved to {checkpoint_path}")
 
     else:
         # Standard Training with PyTorch Lightning for other datasets
