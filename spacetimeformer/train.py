@@ -872,7 +872,6 @@ def main(args):
                 # y_t = forecast[:, :, [3, 4]] # Target targets
                 x_t = context[:, -args.target_points:, :]  # Target features
                 y_t = forecast[:, :args.target_points, [3, 4]] # Target targets
-                print('train: ',np.shape(y_t))
                 # Move data to the appropriate device
                 x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
 
@@ -899,7 +898,6 @@ def main(args):
                     # x_t = forecast[:, :, :]
                     x_t = context[:, -args.target_points:, :]
                     y_t = forecast[:, :args.target_points, [3, 4]]
-                    print('test: ',np.shape(y_t))
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
@@ -925,7 +923,6 @@ def main(args):
                     # x_t = forecast[:, :, :]
                     x_t = context[:, -args.target_points:, :]
                     y_t = forecast[:, :args.target_points, [3, 4]]
-                    print('oos: ',np.shape(y_t))
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
