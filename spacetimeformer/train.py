@@ -886,7 +886,6 @@ def main(args):
                 total_train_loss += loss.item()
 
             average_train_loss = total_train_loss / len(train_loader)
-            # print(f"Epoch {epoch}, Training Loss: {average_train_loss}")
 
             # Test Phase
             forecaster.eval()
@@ -954,6 +953,10 @@ def main(args):
             #     for actual, predicted in oos_results:
             #         for a, p in zip(actual, predicted):
             #             writer.writerow([a, p])
+        # Save a checkpoint after each epoch
+        checkpoint_path = os.path.join(log_dir, f'checkpoint_epoch_{epoch}.pth')
+        torch.save(forecaster.state_dict(), checkpoint_path)
+        print(f"Checkpoint saved to {checkpoint_path}")
 
     else:
         # Standard Training with PyTorch Lightning for other datasets
