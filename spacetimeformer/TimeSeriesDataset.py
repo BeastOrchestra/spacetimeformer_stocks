@@ -28,18 +28,3 @@ class TimeSeriesDataset(Dataset):
         context = self.data_files[file_index][within_file_idx:within_file_idx+self.context_length]
         forecast = self.data_files[file_index][within_file_idx+self.context_length:within_file_idx+self.context_length+self.forecast_length]
         return torch.tensor(context, dtype=torch.float), torch.tensor(forecast, dtype=torch.float)
-# Create DataLoaders for each dataset
-
-# train_dataset = TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=10, forecast_length=10)
-# train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-
-# test_dataset = TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=10, forecast_length=10)
-# test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-
-# oos_dataset = TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=10, forecast_length=10)
-# oos_dataloader = DataLoader(oos_dataset, batch_size=32, shuffle=False)
-
-# # Example of iterating over a DataLoader
-# for context, forecast in train_dataloader:
-#     # Model training code here
-#     1+1

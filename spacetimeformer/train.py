@@ -859,10 +859,10 @@ def main(args):
             forecaster.train()  # Set the model to training mode
             total_train_loss = 0
             for batch_idx, (context, forecast) in enumerate(train_loader):
-                # Unpack your batch into x_c, y_c, x_t, y_t
+                # Unpack  batch into x_c, y_c, x_t, y_t
                 # Adjust slicing according to your data structure
-                x_c = context[:, :, :]  # Context features
-                y_c = context[:, :, [3, 4]]  # Context targets
+                x_c = context[:, :-args.target_points, :]  # Context features
+                y_c = context[:, :-args.target_points, [3, 4]]  # Context targets
 
                 # x_t = context[:, :, :]  # Target features
                 # y_t = forecast[:, :, [3, 4]] # Target targets
@@ -888,8 +888,8 @@ def main(args):
             total_test_loss = 0
             with torch.no_grad():
                 for context, forecast in test_loader:
-                    x_c = context[:, :, :]
-                    y_c = context[:, :, [3, 4]]
+                    x_c = context[:, :-args.target_points, :]
+                    y_c = context[:, :-args.target_points, [3, 4]]
                     # x_t = forecast[:, :, :]
                     x_t = context[:, -args.target_points:, :]
                     y_t = forecast[:, :args.target_points, [3, 4]]
@@ -913,8 +913,8 @@ def main(args):
             forecaster.eval()
             with torch.no_grad():
                 for context, forecast in oos_loader:
-                    x_c = context[:, :, :]
-                    y_c = context[:, :, [3, 4]]
+                    x_c = context[:, :-args.target_points, :]
+                    y_c = context[:, :-args.target_points, [3, 4]]
                     # x_t = forecast[:, :, :]
                     x_t = context[:, -args.target_points:, :]
                     y_t = forecast[:, :args.target_points, [3, 4]]
