@@ -28,3 +28,4 @@ class TimeSeriesDataset(Dataset):
         context = self.data_files[file_index][within_file_idx:within_file_idx+self.context_length]
         forecast = self.data_files[file_index][within_file_idx+self.context_length:within_file_idx+self.context_length+self.forecast_length]
         return torch.tensor(context, dtype=torch.float), torch.tensor(forecast, dtype=torch.float)
+# that's it for now
