@@ -859,8 +859,7 @@ def main(args):
         train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, 
                                                     forecast_length=args.target_points), batch_size=args.batch_size, shuffle=True)
         test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, 
-                                                   forecast_length=args.target_points), 
-                                                   batch_size=args.batch_size, shuffle=True) # False
+                                                   forecast_length=args.target_points), batch_size=args.batch_size, shuffle=True) # False
         oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, 
                                                   forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
 
