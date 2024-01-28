@@ -99,6 +99,17 @@ class Forecaster(pl.LightningModule, ABC):
             num = 2.0 * abs(preds - true)
             den = abs(preds.detach()) + abs(true) + 1e-5
             loss = 100.0 * (mask * (num / den)).sum() / max(mask.sum(), 1)
+        elif self.loss == "custom_loss":
+            # Compute squared error for each step
+            squared_errors = (preds - true) ** 2
+            # Calculate weights (index**2) / sum(index**2 for index in 1:max_steps)
+            weights = torch.pow(torch.arange(1, 2 + 1, dtype=torch.float32), 2)
+            weights /= weights.sum()
+            # Apply weights to squared errors. Since weights are applied along the sequence length, 
+            # unsqueeze to match the dimensions: [seq_length] -> [1, seq_length, 1]
+            weighted_errors = squared_errors * weights.unsqueeze(0).unsqueeze(-1)
+            # Calculate weighted average over the sequence length and features
+            loss = weighted_errors.mean(dim=[1, 2])
         else:
             raise ValueError(f"Unrecognized Loss Function : {self.loss}")
         return loss
