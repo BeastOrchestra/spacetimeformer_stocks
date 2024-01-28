@@ -806,6 +806,31 @@ def append_to_csv(y_t, predictions, csv_file='predictions.csv'):
     # Append to CSV
     df.to_csv(csv_file, mode='a', header=not os.path.exists(csv_file), index=False)
 
+def custom_weighted_mse_loss(predictions, targets, max_steps):
+    """
+    Custom weighted MSE loss where each step's error is weighted based on its index in the sequence (squared).
+    Predictions and targets are assumed to have shape [batch, len(targets), 2].
+    """
+    assert predictions.shape == targets.shape, "Predictions and targets must have the same shape"
+    batch_size, seq_length, _ = predictions.shape
+    assert seq_length == max_steps, "Sequence length must match max_steps"
+
+    # Compute squared error for each step
+    squared_errors = (predictions - targets) ** 2
+
+    # Calculate weights (index**2) / sum(index**2 for index in 1:max_steps)
+    weights = torch.pow(torch.arange(1, max_steps + 1, dtype=torch.float32), 2)
+    weights /= weights.sum()
+
+    # Apply weights to squared errors. Since weights are applied along the sequence length, 
+    # unsqueeze to match the dimensions: [seq_length] -> [1, seq_length, 1]
+    weighted_errors = squared_errors * weights.unsqueeze(0).unsqueeze(-1)
+
+    # Calculate weighted average over the sequence length and features
+    weighted_mse = weighted_errors.mean(dim=[1, 2])
+
+    # Average over the batch
+    return weighted_mse.mean()
 
 def main(args):
     # Initialization and Setup
@@ -852,8 +877,8 @@ def main(args):
     if args.dset == "stocks":
         # Custom Training Loop for 'stocks'
         optimizer = torch.optim.Adam(forecaster.parameters(), lr=args.learning_rate)
-        loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
-
+        # loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
+        loss_function = custom_weighted_mse_loss()
         for epoch in range(args.epochs):
             forecaster.train()  # Set the model to training mode
             total_train_loss = 0
@@ -875,7 +900,8 @@ def main(args):
                 # Extract predictions from model output
                 predictions = model_output[0] if isinstance(model_output, tuple) else model_output
                 # Calculate loss
-                loss = loss_function(predictions, y_t)
+                # loss = loss_function(predictions, y_t) # MSE
+                loss = loss_function(predictions, y_t, max_steps=2) # modified MSE
                 loss.backward()
                 optimizer.step()
                 total_train_loss += loss.item()
@@ -896,7 +922,8 @@ def main(args):
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-                    test_loss = loss_function(predictions, y_t)
+                    # test_loss = loss_function(predictions, y_t)
+                    test_loss = loss_function(predictions, y_t, max_steps=2) # modified MSE
                     total_test_loss += test_loss.item()
 
             average_test_loss = total_test_loss / len(test_loader)
@@ -922,7 +949,8 @@ def main(args):
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
 
-                    oos_loss = loss_function(predictions, y_t)
+                    # oos_loss = loss_function(predictions, y_t)
+                    oos_loss = loss_function(predictions, y_t, max_steps=2) # modified MSE
                     total_oos_loss += oos_loss.item()
 
                     # Store results for each batch
