@@ -877,7 +877,7 @@ def main(args):
     if args.dset == "stocks":
         # Custom Training Loop for 'stocks'
         optimizer = torch.optim.Adam(forecaster.parameters(), lr=args.learning_rate)
-        # loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
+        loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
         # loss_function = custom_weighted_mse_loss(predictions,y_t,max_steps=2)
         for epoch in range(args.epochs):
             forecaster.train()  # Set the model to training mode
@@ -900,8 +900,8 @@ def main(args):
                 # Extract predictions from model output
                 predictions = model_output[0] if isinstance(model_output, tuple) else model_output
                 # Calculate loss
-                # loss = loss_function(predictions, y_t) # MSE
-                loss = custom_weighted_mse_loss(predictions, y_t, max_steps=2) # modified MSE
+                loss = loss_function(predictions, y_t) # MSE
+                # loss = custom_weighted_mse_loss(predictions, y_t, max_steps=2) # modified MSE
                 loss.backward()
                 optimizer.step()
                 total_train_loss += loss.item()
@@ -922,8 +922,8 @@ def main(args):
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-                    # test_loss = loss_function(predictions, y_t)
-                    test_loss = custom_weighted_mse_loss(predictions, y_t, max_steps=2) # modified MSE
+                    test_loss = loss_function(predictions, y_t)
+                    # test_loss = custom_weighted_mse_loss(predictions, y_t, max_steps=2) # modified MSE
                     total_test_loss += test_loss.item()
 
             average_test_loss = total_test_loss / len(test_loader)
@@ -949,8 +949,8 @@ def main(args):
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
 
-                    # oos_loss = loss_function(predictions, y_t)
-                    oos_loss = custom_weighted_mse_loss(predictions, y_t, max_steps=2) # modified MSE
+                    oos_loss = loss_function(predictions, y_t)
+                    # oos_loss = custom_weighted_mse_loss(predictions, y_t, max_steps=2) # modified MSE
                     total_oos_loss += oos_loss.item()
 
                     # Store results for each batch
