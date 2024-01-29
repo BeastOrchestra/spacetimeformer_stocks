@@ -403,37 +403,27 @@ def create_model(config):
 
     return forecaster
 
-def weighted_mse_loss(
-    input: Tensor,
-    target: Tensor,
-) -> Tensor:
-    """
-    Measures the weighted element-wise mean squared error.
-    The weight for each element is proportional to its index.
-    """
-    if has_torch_function_variadic(input, target):
-        return handle_torch_function(
-            weighted_mse_loss, (input, target), input, target
-        )
-    if not (target.size() == input.size()):
-        warnings.warn(
-            f"Using a target size ({target.size()}) that is different to the input size ({input.size()}). "
-            "This will likely lead to incorrect results due to broadcasting. "
-            "Please ensure they have the same size.",
-            stacklevel=2,
-        )
+def weighted_mse_loss(input: Tensor, target: Tensor) -> Tensor:
+    # ... [previous code] ...
+
     total_weighted_squared_diffs = 0
     for i in range(input.shape[1]):
-      expanded_input, expanded_target = torch.broadcast_tensors(input, target)
-      # Create weights proportional to index
-      n = expanded_input.shape[0]
-      weights = torch.arange(1, n + 1, dtype=torch.float32, device=expanded_input.device)**2
-      weights /= weights.sum()
-      # Apply weights to squared differences
-      weighted_squared_diffs = weights * (expanded_input[:,i] - expanded_target[:,i])**2
-      total_weighted_squared_diffs += weighted_squared_diffs.sum()
-    # Aggregate the result
-    return total_weighted_squared_diffs/(input.shape[1]*input.shape[0])
+        expanded_input, expanded_target = torch.broadcast_tensors(input, target)
+        n = expanded_input.shape[0]
+        weights = torch.arange(1, n + 1, dtype=torch.float32, device=expanded_input.device)**2
+        weights /= weights.sum()
+
+        # Debugging shapes
+        print("Weights shape:", weights.shape)
+        print("Expanded input shape:", expanded_input[:,i].shape)
+        print("Expanded target shape:", expanded_target[:,i].shape)
+
+        # Apply weights to squared differences
+        weighted_squared_diffs = weights * (expanded_input[:,i] - expanded_target[:,i])**2
+        total_weighted_squared_diffs += weighted_squared_diffs.sum()
+
+    return total_weighted_squared_diffs / (input.shape[1] * input.shape[0])
+
 
 
 def create_dset(config):
