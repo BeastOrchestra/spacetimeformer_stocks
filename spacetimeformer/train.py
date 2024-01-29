@@ -884,7 +884,6 @@ def main(args):
         # Custom Training Loop for 'stocks'
         optimizer = torch.optim.Adam(forecaster.parameters(), lr=args.learning_rate)
         # loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
-        loss_function = weighted_mse_loss()
         for epoch in range(args.epochs):
             forecaster.train()  # Set the model to training mode
             total_train_loss = 0
@@ -904,7 +903,8 @@ def main(args):
                 # Extract predictions from model output
                 predictions = model_output[0] if isinstance(model_output, tuple) else model_output
                 # Calculate loss
-                loss = loss_function(predictions, y_t)
+                # loss = loss_function(predictions, y_t)
+                loss = weighted_mse_loss(predictions, y_t)
                 loss.backward()
                 optimizer.step()
                 total_train_loss += loss.item()
