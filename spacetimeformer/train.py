@@ -413,16 +413,16 @@ def weighted_mse_loss(input: Tensor, target: Tensor) -> Tensor:
         weights = torch.arange(1, n + 1, dtype=torch.float32, device=expanded_input.device)**2
         weights /= weights.sum()
 
-        # Debugging shapes
-        print("Weights shape:", weights.shape)
-        print("Expanded input shape:", expanded_input[:,i].shape)
-        print("Expanded target shape:", expanded_target[:,i].shape)
+        # Reshape weights to make them broadcastable
+        # Adding a dimension so that weights shape becomes [256, 1]
+        weights = weights.unsqueeze(1)
 
         # Apply weights to squared differences
         weighted_squared_diffs = weights * (expanded_input[:,i] - expanded_target[:,i])**2
         total_weighted_squared_diffs += weighted_squared_diffs.sum()
 
     return total_weighted_squared_diffs / (input.shape[1] * input.shape[0])
+
 
 
 
