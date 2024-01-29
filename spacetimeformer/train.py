@@ -7,6 +7,9 @@ import uuid
 
 import pytorch_lightning as pl
 import torch
+from torch import Tensor
+from torch.overrides import has_torch_function_variadic, handle_torch_function
+import warnings
 
 import spacetimeformer as stf
 from TimeSeriesDataset import TimeSeriesDataset
@@ -399,6 +402,38 @@ def create_model(config):
         )
 
     return forecaster
+
+def weighted_mse_loss(
+    input: Tensor,
+    target: Tensor,
+) -> Tensor:
+    """
+    Measures the weighted element-wise mean squared error.
+    The weight for each element is proportional to its index.
+    """
+    if has_torch_function_variadic(input, target):
+        return handle_torch_function(
+            weighted_mse_loss, (input, target), input, target
+        )
+    if not (target.size() == input.size()):
+        warnings.warn(
+            f"Using a target size ({target.size()}) that is different to the input size ({input.size()}). "
+            "This will likely lead to incorrect results due to broadcasting. "
+            "Please ensure they have the same size.",
+            stacklevel=2,
+        )
+    total_weighted_squared_diffs = 0
+    for i in range(input.shape[1]):
+      expanded_input, expanded_target = torch.broadcast_tensors(input, target)
+      # Create weights proportional to index
+      n = expanded_input.shape[0]
+      weights = torch.arange(1, n + 1, dtype=torch.float32, device=expanded_input.device)**2
+      weights /= weights.sum()
+      # Apply weights to squared differences
+      weighted_squared_diffs = weights * (expanded_input[:,i] - expanded_target[:,i])**2
+      total_weighted_squared_diffs += weighted_squared_diffs.sum()
+    # Aggregate the result
+    return total_weighted_squared_diffs/(input.shape[1]*input.shape[0])
 
 
 def create_dset(config):
@@ -829,11 +864,6 @@ def main(args):
         # Custom DataLoader for 'stocks'
         args.null_value = None # NULL_VAL
         args.pad_value = None
-        # args.pad_value = pad_val
-        # train_loader = DataLoader(TimeSeriesDataset(data_folder=args.train_data_path,
-        #                                             context_length=args.context_points,
-        #                                             forecast_length=args.target_points),
-        #                           batch_size=args.batch_size, shuffle=True)
 
         train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=True)
         test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
@@ -853,8 +883,8 @@ def main(args):
     if args.dset == "stocks":
         # Custom Training Loop for 'stocks'
         optimizer = torch.optim.Adam(forecaster.parameters(), lr=args.learning_rate)
-        loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
-
+        # loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
+        loss_function = weighted_mse_loss()
         for epoch in range(args.epochs):
             forecaster.train()  # Set the model to training mode
             total_train_loss = 0
@@ -864,8 +894,6 @@ def main(args):
                 x_c = context[:, :-args.target_points, :]  # Context features
                 y_c = context[:, :-args.target_points, [3, 4]]  # Context targets
 
-                # x_t = context[:, :, :]  # Target features
-                # y_t = forecast[:, :, [3, 4]] # Target targets
                 x_t = context[:, -args.target_points:, :]  # Target features
                 y_t = forecast[:, :args.target_points, [3, 4]] # Target targets
                 # Move data to the appropriate device
