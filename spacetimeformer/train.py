@@ -915,7 +915,8 @@ def main(args):
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-                    test_loss = loss_function(predictions, y_t)
+                    # test_loss = loss_function(predictions, y_t)
+                    test_loss = weighted_mse_loss(predictions, y_t)
                     total_test_loss += test_loss.item()
 
             average_test_loss = total_test_loss / len(test_loader)
@@ -941,7 +942,8 @@ def main(args):
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
 
-                    oos_loss = loss_function(predictions, y_t)
+                    # oos_loss = loss_function(predictions, y_t)
+                    oos_loss = weighted_mse_loss(predictions, y_t)
                     total_oos_loss += oos_loss.item()
 
                     # Store results for each batch
