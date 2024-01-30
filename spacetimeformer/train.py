@@ -403,27 +403,25 @@ def create_model(config):
 
     return forecaster
 
-def weighted_mse_loss(input: Tensor, target: Tensor) -> Tensor:
-    # ... [previous code] ...
+# def weighted_mse_loss(input: Tensor, target: Tensor) -> Tensor:
+#     # ... [previous code] ...
+# this doesnt work in batch
+#     total_weighted_squared_diffs = 0
+#     for i in range(input.shape[1]):
+#         expanded_input, expanded_target = torch.broadcast_tensors(input, target)
+#         n = expanded_input.shape[0]
+#         weights = torch.arange(1, n + 1, dtype=torch.float32, device=expanded_input.device)**2
+#         weights /= weights.sum()
+#         print(weights)
+#         # Reshape weights to make them broadcastable
+#         # Adding a dimension so that weights shape becomes [256, 1]
+#         weights = weights.unsqueeze(1)
 
-    total_weighted_squared_diffs = 0
-    for i in range(input.shape[1]):
-        expanded_input, expanded_target = torch.broadcast_tensors(input, target)
-        n = expanded_input.shape[0]
-        weights = torch.arange(1, n + 1, dtype=torch.float32, device=expanded_input.device)**2
-        weights /= weights.sum()
-        print(weights)
-        # Reshape weights to make them broadcastable
-        # Adding a dimension so that weights shape becomes [256, 1]
-        weights = weights.unsqueeze(1)
+#         # Apply weights to squared differences
+#         weighted_squared_diffs = weights * (expanded_input[:,i] - expanded_target[:,i])**2
+#         total_weighted_squared_diffs += weighted_squared_diffs.sum()
 
-        # Apply weights to squared differences
-        weighted_squared_diffs = weights * (expanded_input[:,i] - expanded_target[:,i])**2
-        total_weighted_squared_diffs += weighted_squared_diffs.sum()
-
-    return total_weighted_squared_diffs / (input.shape[1] * input.shape[0])
-
-
+#     return total_weighted_squared_diffs / (input.shape[1] * input.shape[0])
 
 
 def create_dset(config):
@@ -873,7 +871,7 @@ def main(args):
     if args.dset == "stocks":
         # Custom Training Loop for 'stocks'
         optimizer = torch.optim.Adam(forecaster.parameters(), lr=args.learning_rate)
-        # loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
+        loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
         for epoch in range(args.epochs):
             forecaster.train()  # Set the model to training mode
             total_train_loss = 0
@@ -893,8 +891,8 @@ def main(args):
                 # Extract predictions from model output
                 predictions = model_output[0] if isinstance(model_output, tuple) else model_output
                 # Calculate loss
-                # loss = loss_function(predictions, y_t)
-                loss = weighted_mse_loss(predictions, y_t)
+                loss = loss_function(predictions, y_t)
+                # loss = weighted_mse_loss(predictions, y_t)
                 loss.backward()
                 optimizer.step()
                 total_train_loss += loss.item()
@@ -915,8 +913,8 @@ def main(args):
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-                    # test_loss = loss_function(predictions, y_t)
-                    test_loss = weighted_mse_loss(predictions, y_t)
+                    test_loss = loss_function(predictions, y_t)
+                    # test_loss = weighted_mse_loss(predictions, y_t)
                     total_test_loss += test_loss.item()
 
             average_test_loss = total_test_loss / len(test_loader)
@@ -942,8 +940,8 @@ def main(args):
                     model_output = forecaster(x_c, y_c, x_t, y_t)
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
 
-                    # oos_loss = loss_function(predictions, y_t)
-                    oos_loss = weighted_mse_loss(predictions, y_t)
+                    oos_loss = loss_function(predictions, y_t)
+                    # oos_loss = weighted_mse_loss(predictions, y_t)
                     total_oos_loss += oos_loss.item()
 
                     # Store results for each batch
