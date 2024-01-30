@@ -418,7 +418,7 @@ def weighted_mse_loss(input: Tensor, target: Tensor) -> Tensor:
         weights = weights.unsqueeze(1)
 
         # Apply weights to squared differences
-        weighted_squared_diffs = weights * (expanded_input[:,i] - expanded_target[:,i])**2
+        weighted_squared_diffs = weights * (expanded_input[:,i] - expanded_target[:,i])#**2
         total_weighted_squared_diffs += weighted_squared_diffs.sum()
 
     return total_weighted_squared_diffs / (input.shape[1] * input.shape[0])
