@@ -4,6 +4,8 @@ import sys
 import warnings
 import os
 import uuid
+import multiprocessing
+cpuCount = multiprocessing.cpu_count()
 
 import pytorch_lightning as pl
 import torch
@@ -695,7 +697,7 @@ def create_dset(config):
                 data_path = 'spacetimeformer/data/oos'  # out-of-sample or validation
 
             data_module = TimeSeriesDataset(data_folder=data_path, context_length=config.context_points, forecast_length=config.target_points)
-            data_loader = DataLoader(data_module, batch_size=config.batch_size, shuffle=True if config.phase == "train" else False)
+            data_loader = DataLoader(data_module, batch_size=config.batch_size, num_workers=cpuCount-1,shuffle=True if config.phase == "train" else False)
             target_cols = ['open', 'high', 'low', 'Close', 'vclose', 'vopen', 'vhigh', 'vlow',
                            'VIX', 'SPY', 'TNX', 'rsi14', 'rsi9', 'rsi24', 'MACD5355macddiff',
                            'MACD5355macddiffslope', 'MACD5355macd', 'MACD5355macdslope',
@@ -853,9 +855,9 @@ def main(args):
         args.null_value = None # NULL_VAL
         args.pad_value = None
 
-        train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=True)
-        test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
-        oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
+        train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points), num_workers=cpuCount-1,batch_size=args.batch_size, shuffle=True)
+        test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), num_workers=cpuCount-1, batch_size=args.batch_size, shuffle=False)
+        oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points), num_workers=cpuCount-1,batch_size=args.batch_size, shuffle=False)
 
         # data_loader, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
     else:
