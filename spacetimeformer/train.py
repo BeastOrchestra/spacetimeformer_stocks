@@ -4,6 +4,8 @@ import sys
 import warnings
 import os
 import uuid
+import multiprocessing
+cpuCount = multiprocessing.cpu_count()
 
 import pytorch_lightning as pl
 import torch
@@ -853,9 +855,9 @@ def main(args):
         args.null_value = None # NULL_VAL
         args.pad_value = None
 
-        train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=True)
+        train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points),batch_size=args.batch_size, shuffle=True)
         test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
-        oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False)
+        oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points),batch_size=args.batch_size, shuffle=False)
 
         # data_loader, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
     else:
@@ -877,12 +879,16 @@ def main(args):
             total_train_loss = 0
             for batch_idx, (context, forecast) in enumerate(train_loader):
                 # Unpack  batch into x_c, y_c, x_t, y_t
-                # Adjust slicing according to your data structure
+                # original
                 x_c = context[:, :-args.target_points, :]  # Context features
                 y_c = context[:, :-args.target_points, [3, 4]]  # Context targets
-
                 x_t = context[:, -args.target_points:, :]  # Target features
                 y_t = forecast[:, :args.target_points, [3, 4]] # Target targets
+                # Experimental
+                # x_c = context[:, :30, :]
+                # y_c = context[:, 30:, [3, 4]]
+                # x_t = forecast[:, :30, :]
+                # y_t = forecast[:, 30:, [3, 4]]
                 # Move data to the appropriate device
                 x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
 
@@ -904,11 +910,16 @@ def main(args):
             total_test_loss = 0
             with torch.no_grad():
                 for context, forecast in test_loader:
+                    # Original Below
                     x_c = context[:, :-args.target_points, :]
                     y_c = context[:, :-args.target_points, [3, 4]]
-                    # x_t = forecast[:, :, :]
                     x_t = context[:, -args.target_points:, :]
                     y_t = forecast[:, :args.target_points, [3, 4]]
+                    # # Experimental
+                    # x_c = context[:, :30, :]
+                    # y_c = context[:, 30:, [3, 4]]
+                    # x_t = forecast[:, :30, :]
+                    # y_t = forecast[:, 30:, [3, 4]]
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
@@ -930,11 +941,16 @@ def main(args):
             forecaster.eval()
             with torch.no_grad():
                 for context, forecast in oos_loader:
+                    # Original
                     x_c = context[:, :-args.target_points, :]
                     y_c = context[:, :-args.target_points, [3, 4]]
-                    # x_t = forecast[:, :, :]
                     x_t = context[:, -args.target_points:, :]
                     y_t = forecast[:, :args.target_points, [3, 4]]
+                    # experimental
+                    # x_c = context[:, :30, :]
+                    # y_c = context[:, 30:, [3, 4]]
+                    # x_t = forecast[:, :30, :]
+                    # y_t = forecast[:, 30:, [3, 4]]
                     x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
                     
                     model_output = forecaster(x_c, y_c, x_t, y_t)
