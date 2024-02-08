@@ -22,6 +22,6 @@ class TimeSeriesDataset_ContextOnly(Dataset):
         return torch.tensor(context, dtype=torch.float)
 
 # Example usage
-# dataset = TimeSeriesDataset(folder_name='path_to_folder', file_name='data.csv', context_length=10)
+# dataset = TimeSeriesDataset_ContextOnly(folder_name='path_to_folder', file_name='data.csv', context_length=10)
 # dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 

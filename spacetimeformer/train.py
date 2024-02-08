@@ -146,22 +146,6 @@ def create_model(config):
         x_dim = 2
         yc_dim = 207
         yt_dim = 207
-    elif config.dset == "pems-bay":
-        x_dim = 2
-        yc_dim = 325
-        yt_dim = 325
-    elif config.dset == "precip":
-        x_dim = 2
-        yc_dim = 49
-        yt_dim = 49
-    elif config.dset == "asos":
-        x_dim = 6
-        yc_dim = 6
-        yt_dim = 6
-    elif config.dset == "solar_energy":
-        x_dim = 6
-        yc_dim = 137
-        yt_dim = 137
     elif config.dset == "stocks":
         x_dim = 95
         yc_dim = 2 # Can reduce to specific features. i.e you could forecast only 'Close' (yc_dim=1)
