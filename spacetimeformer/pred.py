@@ -18,11 +18,10 @@ import csv
 import pandas
 import numpy as np
 
-_MODELS = ["spacetimeformer", "lstm"]
+_MODELS = ["spacetimeformer"]
 
 _DSETS = [
     "stocks",
-    "exchange",
 ]
 
 def create_model(config):
@@ -31,37 +30,12 @@ def create_model(config):
         x_dim = 95
         yc_dim = 2 # Can reduce to specific features. i.e you could forecast only 'Close' (yc_dim=1)
         yt_dim = 2
-    elif config.dset == "exchange":
-        x_dim = 6
-        yc_dim = 8
-        yt_dim = 8
 
     assert x_dim is not None
     assert yc_dim is not None
     assert yt_dim is not None
 
-    if config.model == "lstm":
-        forecaster = stf.lstm_model.LSTM_Forecaster(
-            # encoder
-            d_x=x_dim,
-            d_yc=yc_dim,
-            d_yt=yt_dim,
-            time_emb_dim=config.time_emb_dim,
-            hidden_dim=config.hidden_dim,
-            n_layers=config.n_layers,
-            dropout_p=config.dropout_p,
-            # training
-            learning_rate=config.learning_rate,
-            teacher_forcing_prob=config.teacher_forcing_start,
-            l2_coeff=config.l2_coeff,
-            loss=config.loss,
-            linear_window=config.linear_window,
-            use_revin=config.use_revin,
-            linear_shared_weights=config.linear_shared_weights,
-            use_seasonal_decomp=config.use_seasonal_decomp,
-        )
-
-    elif config.model == "spacetimeformer":
+    if config.model == "spacetimeformer":
         if hasattr(config, "context_points") and hasattr(config, "target_points"):
             max_seq_len = config.context_points + config.target_points
         elif hasattr(config, "max_len"):
