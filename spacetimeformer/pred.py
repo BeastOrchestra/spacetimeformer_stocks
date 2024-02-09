@@ -17,6 +17,7 @@ from torch.utils.data import DataLoader
 import csv
 import pandas
 import numpy as np
+import numpy as pd
 
 _MODELS = ["spacetimeformer"]
 
@@ -341,39 +342,50 @@ def main(args):
         args.null_value = None # NULL_VAL
         args.pad_value = None
 
-        oos_loader = DataLoader(TimeSeriesDataset_ContextOnly(data_folder='spacetimeformer/data/oos', 
-                                                              context_length=args.context_points, 
-                                                              forecast_length=args.target_points),
-                                                              batch_size=args.batch_size, 
-                                                              shuffle=False, num_workers=4)
+        # oos_loader = DataLoader(TimeSeriesDataset_ContextOnly(data_folder='spacetimeformer/data/oos', 
+        #                                                       context_length=args.context_points, 
+        #                                                       forecast_length=args.target_points),
+        #                                                       batch_size=args.batch_size, 
+        #                                                       shuffle=False, num_workers=4)
+        folder='spacetimeformer/data/oos'
+        xt_holder = []
+        for i in os.listdir(folder): # loop over data in the oos folder by ticker symbol
+            dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=i, context_length=args.context_points)
+            dataloader = DataLoader(dataset, batch_size=1000, shuffle=False) # Batch size of 1000 ensures all data is in one batch
+            for batch_idx, (context) in enumerate(dataloader):
+                # Unpack  batch into x_c, y_c, x_t, y_t
+                x_t = context[:, -args.context_points:, :]  # Context features
+                xt_holder.append(x_t[-1,:,:])
+            xt_holder = torch.stack(xt_holder, dim=0)
+        print('Eval Dataset Shape: ',xt_holder.shape)
 
     # Model Training and Evaluation
     forecaster = create_model(args)
     forecaster = forecaster.to(device)  # Move the model to the specified device
 
     if args.dset == "stocks":
-        # Custom Training Loop for 'stocks'
-        # optimizer = torch.optim.Adam(forecaster.parameters(), lr=args.learning_rate)
-        # loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
-
-        # # Out-of-Sample Phase
-        # total_oos_loss = 0
-        # oos_results = []
-
-        # # Out-of-Sample Phase
-        # total_oos_loss = 0
         forecaster.eval()
         with torch.no_grad():
-            for context in oos_loader:
-                x_c = context[:, -args.context_points:, :]
-                y_c = context[:, :-args.target_points, [3, 4]]
-                x_t = context[:, -args.context_points:, :]
-                # y_t = forecast[:, :args.target_points, [3, 4]]
+            x_c=xt_holder[:,-args.context_points:,:]
+            x_t=xt_holder[:,-args.context_points:,:] # just set same as context since you're grabbing the last x vars
+            y_c=xt_holder[:,-args.context_points:,[3,4]]
+            x_c, y_c, x_t = x_c.to(device), y_c.to(device), x_t.to(device) #, y_t.to(device)
+            model_output = forecaster(x_t)
+            predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+            # Additional steps to save predictions
+            predictions = predictions.cpu().detach().numpy()  # Move to CPU and convert to numpy
+            predictions_df = pd.DataFrame(predictions)  # Convert numpy array to pandas DataFrame
+            predictions_df.to_csv('oos_predictions.csv', index=False)  # Save to CSV without row indices
 
-                x_c, y_c, x_t = x_c.to(device), y_c.to(device), x_t.to(device) #, y_t.to(device)
-                # model_output = forecaster(x_c, y_c, x_t)
-                model_output = forecaster(x_t)
-                predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+            # for context in oos_loader:
+            #     x_c = context[:, -args.context_points:, :]
+            #     y_c = context[:, :-args.target_points, [3, 4]]
+            #     x_t = context[:, -args.context_points:, :]
+            #     # y_t = forecast[:, :args.target_points, [3, 4]]
+            #     x_c, y_c, x_t = x_c.to(device), y_c.to(device), x_t.to(device) #, y_t.to(device)
+            #     # model_output = forecaster(x_c, y_c, x_t)
+            #     model_output = forecaster(x_t)
+            #     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
 
     # WANDB Experiment Finish (if applicable)
     if args.wandb:
