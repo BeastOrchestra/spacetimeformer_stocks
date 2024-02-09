@@ -1,8 +1,8 @@
 import os
 import pandas as pd
-import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
+import os
 
 class TimeSeriesDataset_ContextOnly(Dataset):
     def __init__(self, folder_name, file_name, context_length):
@@ -18,10 +18,8 @@ class TimeSeriesDataset_ContextOnly(Dataset):
         return self.cumulative_length
 
     def __getitem__(self, idx):
-        context = self.data_file[idx:idx+self.context_length]
-        # forecast = self.data_file[idx:idx+self.context_length] # you'll use the same dset for prediction
-        return torch.tensor(context, dtype=torch.float)#, torch.tensor(forecast, dtype=torch.float)
-
+        context = self.data_file[idx+1:idx+self.context_length+1]
+        return torch.tensor(context, dtype=torch.float)
 # Example usage
 # dataset = TimeSeriesDataset_ContextOnly(folder_name='path_to_folder', file_name='data.csv', context_length=10)
 # dataloader = DataLoader(dataset, batch_size=1, shuffle=False)

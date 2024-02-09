@@ -130,10 +130,7 @@ def create_parser():
     stf.data.DataModule.add_cli(parser)
 
 
-    if model == "lstm":
-        stf.lstm_model.LSTM_Forecaster.add_cli(parser)
-        stf.callbacks.TeacherForcingAnnealCallback.add_cli(parser)
-    elif model == "spacetimeformer":
+    if model == "spacetimeformer":
         stf.spacetimeformer_model.Spacetimeformer_Forecaster.add_cli(parser)
     stf.callbacks.TimeMaskedLossCallback.add_cli(parser)
 
@@ -188,29 +185,12 @@ def create_dset(config):
         time_col_name = "Datetime"
         data_path = config.data_path
         time_features = ["year", "month", "day", "weekday", "hour", "minute"]
-        if config.dset == "exchange":
-            if data_path == "auto":
-                data_path = "./data/exchange_rate_converted.csv"
-            target_cols = [
-                "Australia",
-                "United Kingdom",
-                "Canada",
-                "Switzerland",
-                "China",
-                "Japan",
-                "New Zealand",
-                "Singapore",
-            ]
-
-        elif config.dset == "stocks":
+        if config.dset == "stocks":
             config.phase = "predict"
             data_path = 'spacetimeformer/data/oos'  # out-of-sample or validation
             dataset = TimeSeriesDataset_ContextOnly(folder_name=data_path, file_name='data.csv', context_length=config.context_points)
-            dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+            dataloader = DataLoader(dataset, batch_size=1000, shuffle=False) # 1000 so that you get all of the oos dset
 
-            # data_module = TimeSeriesDataset(data_folder=data_path, context_length=config.context_points, forecast_length=config.target_points)
-            # data_loader = DataLoader(data_module, batch_size=config.batch_size, shuffle=True if config.phase == "train" else False, num_workers=4)
-            
             target_cols = ['open', 'high', 'low', 'Close', 'vclose', 'vopen', 'vhigh', 'vlow',
                            'VIX', 'SPY', 'TNX', 'rsi14', 'rsi9', 'rsi24', 'MACD5355macddiff',
                            'MACD5355macddiffslope', 'MACD5355macd', 'MACD5355macdslope',
@@ -361,8 +341,11 @@ def main(args):
         args.null_value = None # NULL_VAL
         args.pad_value = None
 
-        oos_loader = DataLoader(TimeSeriesDataset_ContextOnly(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points),batch_size=args.batch_size, shuffle=False, num_workers=4)
-
+        oos_loader = DataLoader(TimeSeriesDataset_ContextOnly(data_folder='spacetimeformer/data/oos', 
+                                                              context_length=args.context_points, 
+                                                              forecast_length=args.target_points),
+                                                              batch_size=args.batch_size, 
+                                                              shuffle=False, num_workers=4)
 
     # Model Training and Evaluation
     forecaster = create_model(args)
