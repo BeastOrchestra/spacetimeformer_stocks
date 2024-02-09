@@ -288,7 +288,7 @@ def create_dset(config):
     if config.dset =='stocks':
 
         return (
-            data_loader,
+            dataloader,
             INV_SCALER,
             SCALER,
             NULL_VAL,
@@ -387,16 +387,8 @@ def main(args):
         args.null_value = None # NULL_VAL
         args.pad_value = None
 
-        train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points),batch_size=args.batch_size, shuffle=True, num_workers=4)
-        test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False, num_workers=4)
-        oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points),batch_size=args.batch_size, shuffle=False, num_workers=4)
+        oos_loader = DataLoader(TimeSeriesDataset_ContextOnly(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points),batch_size=args.batch_size, shuffle=False, num_workers=4)
 
-        # data_loader, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
-    else:
-        # Standard DataModule for other datasets
-        data_module, inv_scaler, scaler, null_val, plot_var_idxs, plot_var_names, pad_val = create_dset(args)
-        args.null_value = None
-        args.pad_value = pad_val
 
     # Model Training and Evaluation
     forecaster = create_model(args)
@@ -404,124 +396,27 @@ def main(args):
 
     if args.dset == "stocks":
         # Custom Training Loop for 'stocks'
-        optimizer = torch.optim.Adam(forecaster.parameters(), lr=args.learning_rate)
-        loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
-        for epoch in range(args.epochs):
-            forecaster.train()  # Set the model to training mode
-            total_train_loss = 0
-            for batch_idx, (context, forecast) in enumerate(train_loader):
-                # Unpack  batch into x_c, y_c, x_t, y_t
-                # original
-                x_c = context[:, :-args.target_points, :]  # Context features
-                y_c = context[:, :-args.target_points, [3, 4]]  # Context targets
-                x_t = context[:, -args.target_points:, :]  # Target features
-                y_t = forecast[:, :args.target_points, [3, 4]] # Target targets
+        # optimizer = torch.optim.Adam(forecaster.parameters(), lr=args.learning_rate)
+        # loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
 
-                # Move data to the appropriate device
-                x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
+        # # Out-of-Sample Phase
+        # total_oos_loss = 0
+        # oos_results = []
 
-                optimizer.zero_grad()
-                model_output = forecaster(x_c, y_c, x_t, y_t)
-                # Extract predictions from model output
+        # # Out-of-Sample Phase
+        # total_oos_loss = 0
+        forecaster.eval()
+        with torch.no_grad():
+            for context in oos_loader:
+                x_c = context[:, -args.context_points:, :]
+                y_c = context[:, :-args.target_points, [3, 4]]
+                x_t = context[:, -args.context_points:, :]
+                # y_t = forecast[:, :args.target_points, [3, 4]]
+
+                x_c, y_c, x_t = x_c.to(device), y_c.to(device), x_t.to(device) #, y_t.to(device)
+                # model_output = forecaster(x_c, y_c, x_t)
+                model_output = forecaster(x_t)
                 predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-                # Calculate loss
-                loss = loss_function(predictions, y_t)
-                # loss = weighted_mse_loss(predictions, y_t)
-                loss.backward()
-                optimizer.step()
-                total_train_loss += loss.item()
-
-            average_train_loss = total_train_loss / len(train_loader)
-
-            # Test Phase
-            forecaster.eval()
-            total_test_loss = 0
-            with torch.no_grad():
-                for context, forecast in test_loader:
-                    # Original Below
-                    x_c = context[:, :-args.target_points, :]
-                    y_c = context[:, :-args.target_points, [3, 4]]
-                    x_t = context[:, -args.target_points:, :]
-                    y_t = forecast[:, :args.target_points, [3, 4]]
-
-                    x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
-                    
-                    model_output = forecaster(x_c, y_c, x_t, y_t)
-                    predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-                    test_loss = loss_function(predictions, y_t)
-                    # test_loss = weighted_mse_loss(predictions, y_t)
-                    total_test_loss += test_loss.item()
-
-            average_test_loss = total_test_loss / len(test_loader)
-
-            # Out-of-Sample Phase
-            total_oos_loss = 0
-
-            oos_results = []
-
-            # Out-of-Sample Phase
-            total_oos_loss = 0
-            forecaster.eval()
-            with torch.no_grad():
-                for context, forecast in oos_loader:
-                    # Original
-                    x_c = context[:, :-args.target_points, :]
-                    y_c = context[:, :-args.target_points, [3, 4]]
-                    x_t = context[:, -args.target_points:, :]
-                    y_t = forecast[:, :args.target_points, [3, 4]]
-
-                    x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
-                    
-                    model_output = forecaster(x_c, y_c, x_t, y_t)
-                    predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-
-                    oos_loss = loss_function(predictions, y_t)
-                    # oos_loss = weighted_mse_loss(predictions, y_t)
-                    total_oos_loss += oos_loss.item()
-
-                    # Store results for each batch
-                    actual = y_t.cpu().numpy()
-                    pred = predictions.cpu().numpy()
-                    oos_results.extend(zip(actual.reshape(-1, 2), pred.reshape(-1, 2)))
-            average_oos_loss = total_oos_loss / len(oos_loader)
-
-            # Save OOS results to CSV at the end of each epoch
-            with open(f'predictions_epoch_{epoch}.csv', 'w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(['Actual_price', 'Actual_volatility', 'Predicted_price', 'Predicted_volatility'])  # Header
-                for actual, predicted in oos_results:
-                    writer.writerow([*actual, *predicted])
-
-            print(f"Epoch {epoch}, "
-                f"Training Loss: {average_train_loss}, "
-                f"Test Loss: {average_test_loss}, "
-                f"Out-of-Sample Loss: {average_oos_loss}")
-
-        # Save a checkpoint after each epoch
-            checkpoint_path = os.path.join(log_dir, f'checkpoint_epoch_{epoch}.pth')
-            torch.save(forecaster.state_dict(), checkpoint_path)
-            print(f"Checkpoint saved to {checkpoint_path}")
-
-    else:
-        # Standard Training with PyTorch Lightning for other datasets
-        forecaster.set_inv_scaler(inv_scaler)
-        forecaster.set_scaler(scaler)
-        forecaster.set_null_value(null_val)
-
-        # Callbacks and Trainer Configuration
-        callbacks = create_callbacks(args, save_dir=log_dir)
-        trainer = pl.Trainer(
-            gpus=args.gpus,
-            callbacks=callbacks,
-            logger=logger if args.wandb else None,
-            # ... additional trainer configurations ...
-        )
-
-        # Fitting the model
-        trainer.fit(forecaster, datamodule=data_module)
-
-        # Testing the model
-        trainer.test(datamodule=data_module, ckpt_path="best")
 
     # WANDB Experiment Finish (if applicable)
     if args.wandb:

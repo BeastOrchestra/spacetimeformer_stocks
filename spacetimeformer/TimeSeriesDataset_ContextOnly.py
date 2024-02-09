@@ -19,7 +19,8 @@ class TimeSeriesDataset_ContextOnly(Dataset):
 
     def __getitem__(self, idx):
         context = self.data_file[idx:idx+self.context_length]
-        return torch.tensor(context, dtype=torch.float)
+        # forecast = self.data_file[idx:idx+self.context_length] # you'll use the same dset for prediction
+        return torch.tensor(context, dtype=torch.float)#, torch.tensor(forecast, dtype=torch.float)
 
 # Example usage
 # dataset = TimeSeriesDataset_ContextOnly(folder_name='path_to_folder', file_name='data.csv', context_length=10)
