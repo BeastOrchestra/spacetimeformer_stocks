@@ -350,16 +350,18 @@ def main(args):
         #                                                       batch_size=args.batch_size, 
         #                                                       shuffle=False, num_workers=4)
         folder='spacetimeformer/data/oos'
-        xt_holder = []
-        for i in os.listdir(folder): # loop over data in the oos folder by ticker symbol
+        xt_holder = []  # Initialize xt_holder as an empty list to hold tensors
+        for i in os.listdir(folder):  # loop over data in the oos folder by ticker symbol
             dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=i, context_length=args.context_points)
-            dataloader = DataLoader(dataset, batch_size=1000, shuffle=False) # Batch size of 1000 ensures all data is in one batch
+            dataloader = DataLoader(dataset, batch_size=1000, shuffle=False)  # Batch size of 1000 ensures all data is in one batch
             for batch_idx, (context) in enumerate(dataloader):
-                # Unpack  batch into x_c, y_c, x_t, y_t
+                # Unpack batch into x_c, y_c, x_t, y_t
                 x_t = context[:, -args.context_points:, :]  # Context features
-                xt_holder.append(x_t[-1,:,:])
-            xt_holder = torch.stack(xt_holder, dim=0)
-        print('Eval Dataset Shape: ',xt_holder.shape)
+                xt_holder.append(x_t[-1,:,:])  # Append the last item of x_t to xt_holder
+
+        # Ensure torch.stack() is called outside the loop, after xt_holder has collected all tensors
+        xt_holder = torch.stack(xt_holder, dim=0)
+        print('Eval Dataset Shape: ', xt_holder.shape)
 
     # Model Training and Evaluation
     forecaster = create_model(args)
