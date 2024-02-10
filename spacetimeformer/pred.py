@@ -17,7 +17,10 @@ from torch.utils.data import DataLoader
 import csv
 import pandas
 import numpy as np
-import numpy as pd
+!pip install gdown
+import gdown
+
+
 
 _MODELS = ["spacetimeformer"]
 
@@ -362,6 +365,13 @@ def main(args):
     # Model Training and Evaluation
     forecaster = create_model(args)
     forecaster = forecaster.to(device)  # Move the model to the specified device
+    # Download the pre-trained weights
+    url = "https://drive.google.com/uc?id=1tbNhmhNV23QOunLjWveyUj0Y0_DaoBPt"
+    output_path = 'testImport.pth'
+    gdown.download(url, output_path, quiet=False)
+
+    # Load the weights into the model
+    forecaster.load_state_dict(torch.load(output_path))
 
     if args.dset == "stocks":
         forecaster.eval()
