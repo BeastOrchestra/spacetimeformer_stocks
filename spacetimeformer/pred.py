@@ -17,7 +17,6 @@ from torch.utils.data import DataLoader
 import csv
 import pandas
 import numpy as np
-# pip install gdown
 import gdown
 
 
