@@ -377,9 +377,9 @@ def main(args):
     if args.dset == "stocks":
         forecaster.eval()
         with torch.no_grad():
-            x_c = xt_holder[:, -args.context_points:, :]
-            x_t = xt_holder[:, -args.context_points:, :]  # Assuming x_t is used for prediction
-            y_c = xt_holder[:, -args.target_points:, [3, 4]]
+            x_c = xt_holder[:, args.target_points:, :]
+            y_c = xt_holder[:, args.target_points:, [3, 4]]
+            x_t = xt_holder[:, -args.target_points:, :]  # Assuming x_t is used for prediction
             y_t = xt_holder[:, -args.target_points:, [3, 4]]
 
             x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
