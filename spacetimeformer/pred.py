@@ -15,7 +15,7 @@ import spacetimeformer as stf
 from TimeSeriesDataset_ContextOnly import TimeSeriesDataset_ContextOnly
 from torch.utils.data import DataLoader
 import csv
-import pandas
+import pandas as pd
 import numpy as np
 import gdown
 
@@ -243,7 +243,6 @@ def create_dset(config):
         SCALER = dset.apply_scaling
         NULL_VAL = None
     if config.dset =='stocks':
-
         return (
             dataloader,
             INV_SCALER,
@@ -380,8 +379,10 @@ def main(args):
             x_c=xt_holder[:,-args.context_points:,:]
             x_t=xt_holder[:,-args.context_points:,:] # just set same as context since you're grabbing the last x vars
             y_c=xt_holder[:,-args.context_points:,[3,4]]
-            x_c, y_c, x_t = x_c.to(device), y_c.to(device), x_t.to(device) #, y_t.to(device)
-            model_output = forecaster(x_t)
+            y_t=xt_holder[:,-args.context_points:,[3,4]]
+
+            x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
+            model_output = forecaster(x_c, y_c, x_t, y_t)
             predictions = model_output[0] if isinstance(model_output, tuple) else model_output
             # Additional steps to save predictions
             predictions = predictions.cpu().detach().numpy()  # Move to CPU and convert to numpy
