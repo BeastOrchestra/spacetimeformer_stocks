@@ -372,32 +372,46 @@ def main(args):
 
     # Load the weights into the model
     forecaster.load_state_dict(torch.load(output_path))
+    stock_names = [i[:-4] for i in os.listdir(folder)]  # Extract stock names from filenames
 
     if args.dset == "stocks":
         forecaster.eval()
         with torch.no_grad():
-            x_c=xt_holder[:,-args.context_points:,:]
-            x_t=xt_holder[:,-args.context_points:,:] # just set same as context since you're grabbing the last x vars
-            y_c=xt_holder[:,-args.context_points:,[3,4]]
-            y_t=xt_holder[:,-args.context_points:,[3,4]]
+            x_c = xt_holder[:, -args.context_points:, :]
+            x_t = xt_holder[:, -args.context_points:, :]  # Assuming x_t is used for prediction
+            y_c = xt_holder[:, -args.target_points:, [3, 4]]
+            y_t = xt_holder[:, -args.target_points:, [3, 4]]
 
             x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
             model_output = forecaster(x_c, y_c, x_t, y_t)
+            
             predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-            # Additional steps to save predictions
             predictions = predictions.cpu().detach().numpy()  # Move to CPU and convert to numpy
-            predictions_df = pd.DataFrame(predictions)  # Convert numpy array to pandas DataFrame
-            predictions_df.to_csv('oos_predictions.csv', index=False)  # Save to CSV without row indices
+            # Flatten the last two dimensions of predictions and reshape
+            predictions_flattened = predictions.reshape(predictions.shape[0], -1)
+            # Assuming each sample's predictions are now flattened to 20 columns
+            if len(predictions_flattened) == len(stock_names):
+                # Create column names for the DataFrame
+                column_names = [f'Close_{i+1}' for i in range(10)] + [f'Volatility_{i+1}' for i in range(10)]
+                
+                # Create the DataFrame with the reshaped predictions
+                predictions_df = pd.DataFrame(predictions_flattened, columns=column_names, index=stock_names)
 
-            # for context in oos_loader:
-            #     x_c = context[:, -args.context_points:, :]
-            #     y_c = context[:, :-args.target_points, [3, 4]]
-            #     x_t = context[:, -args.context_points:, :]
-            #     # y_t = forecast[:, :args.target_points, [3, 4]]
-            #     x_c, y_c, x_t = x_c.to(device), y_c.to(device), x_t.to(device) #, y_t.to(device)
-            #     # model_output = forecaster(x_c, y_c, x_t)
-            #     model_output = forecaster(x_t)
-            #     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+                # Save to CSV with stock names as row indices
+                predictions_df.to_csv('oos_predictions.csv')
+            else:
+                print("Mismatch between the number of predictions and the number of stock names.")
+
+
+                # for context in oos_loader:
+                #     x_c = context[:, -args.context_points:, :]
+                #     y_c = context[:, :-args.target_points, [3, 4]]
+                #     x_t = context[:, -args.context_points:, :]
+                #     # y_t = forecast[:, :args.target_points, [3, 4]]
+                #     x_c, y_c, x_t = x_c.to(device), y_c.to(device), x_t.to(device) #, y_t.to(device)
+                #     # model_output = forecaster(x_c, y_c, x_t)
+                #     model_output = forecaster(x_t)
+                #     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
 
     # WANDB Experiment Finish (if applicable)
     if args.wandb:
