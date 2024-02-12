@@ -387,13 +387,25 @@ def main(args):
             
             predictions = model_output[0] if isinstance(model_output, tuple) else model_output
             predictions = predictions.cpu().detach().numpy()  # Move to CPU and convert to numpy
-            # Flatten the last two dimensions of predictions and reshape
-            predictions_flattened = predictions.reshape(predictions.shape[0], -1)
-            # Assuming each sample's predictions are now flattened to 20 columns
+
+            # Separate 'close' and 'volatility' values
+            close_values = predictions[:, :, 0]  # Assuming 'close' values are the first in the last dimension
+            volatility_values = predictions[:, :, 1]  # Assuming 'volatility' values are the second
+
+            # Flatten 'close' and 'volatility' arrays
+            close_flattened = close_values.reshape(predictions.shape[0], -1)
+            volatility_flattened = volatility_values.reshape(predictions.shape[0], -1)
+
+            # Concatenate the flattened 'close' and 'volatility' arrays horizontally
+            predictions_flattened = np.hstack((close_flattened, volatility_flattened))
+
+            # Create column names for the DataFrame
+            close_columns = [f'Close_{i+1}' for i in range(close_values.shape[1])]
+            volatility_columns = [f'Volatility_{i+1}' for i in range(volatility_values.shape[1])]
+            column_names = close_columns + volatility_columns
+
+            # Assuming each sample's predictions are now correctly ordered and flattened
             if len(predictions_flattened) == len(stock_names):
-                # Create column names for the DataFrame
-                column_names = [f'Close_{i+1}' for i in range(10)] + [f'Volatility_{i+1}' for i in range(10)]
-                
                 # Create the DataFrame with the reshaped predictions
                 predictions_df = pd.DataFrame(predictions_flattened, columns=column_names, index=stock_names)
 
@@ -401,7 +413,6 @@ def main(args):
                 predictions_df.to_csv('oos_predictions.csv')
             else:
                 print("Mismatch between the number of predictions and the number of stock names.")
-
 
                 # for context in oos_loader:
                 #     x_c = context[:, -args.context_points:, :]
