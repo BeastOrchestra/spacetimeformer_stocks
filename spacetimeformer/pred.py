@@ -366,7 +366,9 @@ def main(args):
     forecaster = create_model(args)
     forecaster = forecaster.to(device)  # Move the model to the specified device
     # Download the pre-trained weights
-    url = "https://drive.google.com/uc?id=1tbNhmhNV23QOunLjWveyUj0Y0_DaoBPt"
+    # url = "https://drive.google.com/uc?id=1tbNhmhNV23QOunLjWveyUj0Y0_DaoBPt"
+    url = "https://drive.google.com/uc?id=1qkHqyc8elM_OoQeYzeo43nijOZh3XL4q"
+
     output_path = 'testImport.pth'
     gdown.download(url, output_path, quiet=False)
 
