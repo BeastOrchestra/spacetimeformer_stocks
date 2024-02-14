@@ -368,7 +368,7 @@ def main(args):
     # url = "https://drive.google.com/uc?id=1tbNhmhNV23QOunLjWveyUj0Y0_DaoBPt"
     # url = "https://drive.google.com/uc?id=1qkHqyc8elM_OoQeYzeo43nijOZh3XL4q"
 
-    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/60cl70v_5e6d_100c10t.pth"
+    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/58c67v60ctx10tgt4e5d256_1024.pth"
     # gdown.download(url, output_path, quiet=False)
 
     # Load the weights into the model
