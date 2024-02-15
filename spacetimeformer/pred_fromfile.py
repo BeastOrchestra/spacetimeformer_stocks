@@ -350,7 +350,6 @@ def main(args):
         xt_holder = []  # Initialize xt_holder as an empty list to hold tensors
         for i in os.listdir(folder):  # loop over data in the oos folder by ticker symbol
             dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=i, context_length=args.context_points)
-            print(i)
             dataloader = DataLoader(dataset, batch_size=1000, shuffle=False)  # Batch size of 1000 ensures all data is in one batch
             for batch_idx, (context) in enumerate(dataloader):
                 # Unpack batch into x_c, y_c, x_t, y_t
