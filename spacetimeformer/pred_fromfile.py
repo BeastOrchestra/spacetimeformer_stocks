@@ -368,9 +368,12 @@ def main(args):
     # url = "https://drive.google.com/uc?id=1qkHqyc8elM_OoQeYzeo43nijOZh3XL4q"
 
 # 2/14
-    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/60c73v100ctx10tgt5e6d512_2048.pth"
+    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/60c73v100ctx10tgt5e6d512_2048.pth"
 # 2/15    
     # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/60c83v.pth"
+# 2/24
+    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/feb24_2024.pth"
+
 
     # gdown.download(url, output_path, quiet=False)
 
