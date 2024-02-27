@@ -12,7 +12,6 @@ import torch
 # imports the torch_xla package
 import torch_xla.core.xla_model as xm
 
-
 import pytorch_lightning as pl
 import torch
 from torch import Tensor
