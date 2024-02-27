@@ -337,6 +337,7 @@ def main(args):
 
     # Data Preparation
     if args.dset == "stocks":
+        print('FFUUUUCK')
         # Custom DataLoader for 'stocks'
         args.null_value = None # NULL_VAL
         args.pad_value = None
@@ -363,9 +364,6 @@ def main(args):
     # Model Training and Evaluation
     forecaster = create_model(args)
     forecaster = forecaster.to(device)  # Move the model to the specified device
-    # Download the pre-trained weights
-    # url = "https://drive.google.com/uc?id=1tbNhmhNV23QOunLjWveyUj0Y0_DaoBPt"
-    # url = "https://drive.google.com/uc?id=1qkHqyc8elM_OoQeYzeo43nijOZh3XL4q"
 
 # 2/14
     # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/60c73v100ctx10tgt5e6d512_2048.pth"
@@ -382,7 +380,7 @@ def main(args):
     forecaster.load_state_dict(torch.load(output_path, map_location=torch.device('cpu')))
 
     stock_names = [i[:-4] for i in os.listdir(folder)]  # Extract stock names from filenames
-
+    print('STOCK NAMED',stock_names)
     if args.dset == "stocks":
         forecaster.eval()
         with torch.no_grad():
