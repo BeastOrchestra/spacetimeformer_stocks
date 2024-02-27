@@ -10,7 +10,6 @@ cpuCount = multiprocessing.cpu_count()
 # imports pytorch
 import torch
 # imports the torch_xla package
-import torch_xla
 import torch_xla.core.xla_model as xm
 
 
