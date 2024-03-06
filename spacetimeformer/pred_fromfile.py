@@ -14,6 +14,8 @@ from torch.utils.data import DataLoader
 import csv
 import pandas as pd
 import numpy as np
+import datetime
+
 # import gdown
 
 
@@ -304,17 +306,49 @@ def create_callbacks(config, save_dir):
         )
     return callbacks
 
-# def append_to_csv(y_t, predictions, csv_file='predictions.csv'):
-#     # Reshape tensors
-#     y_t = y_t.reshape(-1, 2)
-#     predictions = predictions.reshape(-1, 2)
-#     # Concatenate along the second dimension
-#     combined = torch.cat((y_t, predictions), dim=1)
-#     # Convert to Pandas DataFrame
-#     df = pandas.DataFrame(combined.cpu().numpy(), columns=['y_t_1', 'y_t_2', 'pred_1', 'pred_2'])
-#     # Append to CSV
-#     df.to_csv(csv_file, mode='a', header=not os.path.exists(csv_file), index=False)
+def formatOutput():
+    a = pd.read_csv('oos_predictions.csv', index_col=0)
+    b = pd.read_csv('TixMuSig.csv',index_col=1)
 
+    col = ['Close_'+str(i) for i in range(1,11)]
+    Vcol = ['Volatility_'+str(i) for i in range(1,11)]
+    for i in a.index:
+        a.loc[i][col] = a.loc[i][col]*b.loc[i].closesig + b.loc[i].closemu
+        a.loc[i][Vcol] = a.loc[i][Vcol]*b.loc[i].volsig + b.loc[i].volmu
+
+    current_date = datetime.datetime.now()
+    formatted_date = f"{current_date.month}_{current_date.day}_{current_date.year}"
+    a.to_csv('oos_predictions_'+formatted_date+'.csv')
+
+    a['Price_PrctDelta'] = 100*(a['Close_10']-a['Close_1'])/a['Close_1']
+    a['Volatility_PrctDelta'] = 100*(a['Volatility_10']-a['Volatility_1'])/a['Volatility_1']
+
+    PossibleLongCalls = a[(a['Price_PrctDelta'] > 0) & (a['Volatility_PrctDelta'] > 0)]
+    PossibleLongPuts = a[(a['Price_PrctDelta'] < 0) & (a['Volatility_PrctDelta'] > 0)]
+
+    PossibleLongs = a[(a['Price_PrctDelta'] > 0)]
+    PossibleShorts = a[(a['Price_PrctDelta'] < 0)]
+
+    VolPump = a[(a['Volatility_PrctDelta'] > 0)]
+    VolDump = a[(a['Volatility_PrctDelta'] < 0)]
+
+    Calls=PossibleLongCalls[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=False)
+    Puts=PossibleLongPuts[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=True)
+
+    Longs=PossibleLongs[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=False)
+    Shorts=PossibleShorts[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=True)
+
+    LongVol=VolPump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=False)
+    ShortVol=VolDump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=True)
+
+    print('Long: ',Longs[Longs['Price_PrctDelta'] > 2].Price_PrctDelta)
+    print('Short: ',Shorts[Shorts['Price_PrctDelta'] < -2].Price_PrctDelta)
+
+    print('Long Calls: ', Calls[ (Calls['Price_PrctDelta'] > 2) &(Calls['Volatility_PrctDelta'] > 5)].Price_PrctDelta)
+    print('Long Puts: ',Puts[ (Puts['Price_PrctDelta']< -2) & (Puts['Volatility_PrctDelta'] > 5)].Price_PrctDelta)
+
+    print('Long Volatility: ',LongVol[LongVol.Volatility_PrctDelta > 20].Volatility_PrctDelta)
+    print('Short Volatility: ',ShortVol[ShortVol.Volatility_PrctDelta < -20].Volatility_PrctDelta)
 
 def main(args):
     # Initialization and Setup
@@ -415,21 +449,14 @@ def main(args):
             if len(predictions_flattened) == len(stock_names):
                 # Create the DataFrame with the reshaped predictions
                 predictions_df = pd.DataFrame(predictions_flattened, columns=column_names, index=stock_names)
-
-                # Save to CSV with stock names as row indices
+                # Save to CSV with stock names as row indices, timestamped
                 predictions_df.to_csv('oos_predictions.csv')
+                formatOutput
+                # current_date = datetime.datetime.now()
+                # formatted_date = f"{current_date.month}_{current_date.day}_{current_date.year}"
+                # predictions_df.to_csv('oos_predictions_'+formatted_date+'.csv')
             else:
                 print("Mismatch between the number of predictions and the number of stock names.")
-
-                # for context in oos_loader:
-                #     x_c = context[:, -args.context_points:, :]
-                #     y_c = context[:, :-args.target_points, [3, 4]]
-                #     x_t = context[:, -args.context_points:, :]
-                #     # y_t = forecast[:, :args.target_points, [3, 4]]
-                #     x_c, y_c, x_t = x_c.to(device), y_c.to(device), x_t.to(device) #, y_t.to(device)
-                #     # model_output = forecaster(x_c, y_c, x_t)
-                #     model_output = forecaster(x_t)
-                #     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
 
     # WANDB Experiment Finish (if applicable)
     if args.wandb:
@@ -439,6 +466,3 @@ if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
     main(args)
-
-# folder:
-# ./spacetimeformer_stocks/data/STF_LOG_DIR
