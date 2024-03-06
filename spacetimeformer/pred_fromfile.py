@@ -306,7 +306,8 @@ def create_callbacks(config, save_dir):
         )
     return callbacks
 
-def formatOutput():
+def formatOutput(tops):
+    # Only look at the top X
     a = pd.read_csv('oos_predictions.csv', index_col=0)
     b = pd.read_csv('TixMuSig.csv',index_col=1)
 
@@ -341,14 +342,14 @@ def formatOutput():
     LongVol=VolPump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=False)
     ShortVol=VolDump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=True)
 
-    print('Long: ',Longs[Longs['Price_PrctDelta'] > 2].Price_PrctDelta)
-    print('Short: ',Shorts[Shorts['Price_PrctDelta'] < -2].Price_PrctDelta)
+    print('Long: ',Longs[Longs['Price_PrctDelta'] > 2].Price_PrctDelta[:tops])
+    print('Short: ',Shorts[Shorts['Price_PrctDelta'] < -2].Price_PrctDelta[:tops])
 
-    print('Long Calls: ', Calls[ (Calls['Price_PrctDelta'] > 2) &(Calls['Volatility_PrctDelta'] > 5)].Price_PrctDelta)
-    print('Long Puts: ',Puts[ (Puts['Price_PrctDelta']< -2) & (Puts['Volatility_PrctDelta'] > 5)].Price_PrctDelta)
+    print('Long Calls: ', Calls[ (Calls['Price_PrctDelta'] > 2) &(Calls['Volatility_PrctDelta'] > 5)].Price_PrctDelta[:tops])
+    print('Long Puts: ',Puts[ (Puts['Price_PrctDelta']< -2) & (Puts['Volatility_PrctDelta'] > 5)].Price_PrctDelta[:tops])
 
-    print('Long Volatility: ',LongVol[LongVol.Volatility_PrctDelta > 20].Volatility_PrctDelta)
-    print('Short Volatility: ',ShortVol[ShortVol.Volatility_PrctDelta < -20].Volatility_PrctDelta)
+    print('Long Volatility: ',LongVol[LongVol.Volatility_PrctDelta > 20].Volatility_PrctDelta[:tops])
+    print('Short Volatility: ',ShortVol[ShortVol.Volatility_PrctDelta < -20].Volatility_PrctDelta[:tops])
 
 def main(args):
     # Initialization and Setup
