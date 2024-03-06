@@ -451,7 +451,7 @@ def main(args):
                 predictions_df = pd.DataFrame(predictions_flattened, columns=column_names, index=stock_names)
                 # Save to CSV with stock names as row indices, timestamped
                 predictions_df.to_csv('oos_predictions.csv')
-                formatOutput()
+                formatOutput(tops=5)
                 # current_date = datetime.datetime.now()
                 # formatted_date = f"{current_date.month}_{current_date.day}_{current_date.year}"
                 # predictions_df.to_csv('oos_predictions_'+formatted_date+'.csv')
