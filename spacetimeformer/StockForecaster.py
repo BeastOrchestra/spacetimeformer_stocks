@@ -11,7 +11,6 @@ Class object to be run from terminal that performs the following operations:
 # Packages
 import warnings
 import os
-import tensorflow as tf
 import numpy as np
 from sklearn.utils import shuffle
 from arch import arch_model  # !pip install arch==5.3.1
@@ -20,7 +19,6 @@ import datetime as dt
 from sklearn.model_selection import train_test_split
 from ib_insync import *
 import pandas as pd
-from keras import layers
 from datetime import datetime, timedelta
 import pickle
 
