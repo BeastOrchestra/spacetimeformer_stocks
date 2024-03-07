@@ -11,6 +11,7 @@ Class object to be run from terminal that performs the following operations:
 # Packages
 import warnings
 import os
+import tensorflow as tf
 import numpy as np
 from sklearn.utils import shuffle
 from arch import arch_model  # !pip install arch==5.3.1
@@ -19,10 +20,23 @@ import datetime as dt
 from sklearn.model_selection import train_test_split
 from ib_insync import *
 import pandas as pd
+from keras import layers
 from datetime import datetime, timedelta
 import pickle
 
+from argparse import ArgumentParser
+import sys
+import uuid
+
+import torch
+
+import spacetimeformer as stf
+from TimeSeriesDataset_ContextOnly import TimeSeriesDataset_ContextOnly
+from torch.utils.data import DataLoader
+import csv
+
 class Stock42():
+
     def __init__(self):
         self.modName = '600x68a7sh-2.45S10.42L'
         self.tix = ['AAPL','GOOG','TSLA','NFLX','DHR',
@@ -60,6 +74,7 @@ class Stock42():
         self.stpLsRatio = 0.7
         self.profTakrRatio = 1.5
         self.binDef = [1,2,5,10,15,20,30,65,130,252]
+
 
     def LoadModelFromFile(self):
         self.model = tf.keras.models.load_model(os.getcwd() + '/models/' + self.modName, compile=False) #140x_62a_10p_2sh
@@ -368,134 +383,242 @@ class Stock42():
             self.AllData=self.AllData.reset_index(drop=True)
             oos_len = 252  #### Should be user defined (oos, tr, etc...)
             tr_len = int(.75*len(self.AllData[:-oos_len]))
-            self.AllData[:tr_len].to_csv('./spacetimeformer/data/train/' + t + '.csv')
-            self.AllData[tr_len:-oos_len].to_csv('./spacetimeformer/data/test/' + t + '.csv')
-            self.AllData[-oos_len:].to_csv('./spacetimeformer/data/oos/' + t + '.csv')
-        self.MuSigTix.to_csv('./spacetimeformer/data/TixMuSig.csv')
+            self.AllData[:tr_len].to_csv('./data/train/' + t + '.csv')
+            self.AllData[tr_len:-oos_len].to_csv('./data/test/' + t + '.csv')
+            self.AllData[-oos_len:].to_csv('./data/oos/' + t + '.csv')
+        self.MuSigTix.to_csv('./data/TixMuSig.csv')
         return
 
-    def CreateModel(self):
-        def custom_loss_function(y_true, y_pred):
-        # Mean Returns:
-            positions = tf.math.multiply(y_true, y_pred)
-            sh = -tf.math.reduce_mean(positions) # This works beautifully
-            return sh
-        # Custom Metric function  - Average Ret
-        def custom_metric_function(y_true, y_pred):
-            positions = tf.math.multiply(y_true, y_pred) + .000001
-            sh = tf.math.reduce_mean(positions)
-            return sh
-        def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout):
-            # Normalization and Attention
-            x = layers.LayerNormalization(epsilon=1e-6)(inputs) # e-6
-            x = layers.MultiHeadAttention(
-                key_dim=head_size, num_heads=num_heads, dropout=dropout
-            )(x, x)
-            x = layers.Dropout(dropout)(x)
-            res = x + inputs
+    _MODELS = ["spacetimeformer"]
+    _DSETS = ["stocks"]
 
-            # Feed Forward Part
-            x = layers.LayerNormalization(epsilon=1e-6)(res) # e-6
-            x = layers.Conv1D(filters=ff_dim, kernel_size=kern, activation="tanh")(x) # LeakyReLU
-            x = layers.Dropout(dropout)(x)
-            x = layers.Conv1D(filters=inputs.shape[-1], kernel_size=kern)(x)
-            return x + res
+    def create_model(config):
+        x_dim, yc_dim, yt_dim = None, None, None
+        if config.dset == "stocks":
+            x_dim = 95
+            yc_dim = 2 # Can reduce to specific features. i.e you could forecast only 'Close' (yc_dim=1)
+            yt_dim = 2
 
-        # Build the model:
-        f = 2*36 # 2*36  # Number of filters
-        head_size = 64 # 64
-        num_heads= 8 #8
-        ff_dim = 4 # 24
-        num_transformer_blocks= 2 # 4
-        mlp_units=[64]  #128
-        mlp_dropout=0.15 #.4
-        dropout=0.15
-        kern = 1
+        assert x_dim is not None
+        assert yc_dim is not None
+        assert yt_dim is not None
 
-        # inputs_CNN = tf.keras.Input(shape=np.shape(test_images_forCNN[0,:,:,:]))
-        inputs_CNN = tf.keras.Input(shape=(30, self.featLength, 2))
+        if config.model == "spacetimeformer":
+            if hasattr(config, "context_points") and hasattr(config, "target_points"):
+                max_seq_len = config.context_points + config.target_points
+            elif hasattr(config, "max_len"):
+                max_seq_len = config.max_len
+            else:
+                raise ValueError("Undefined max_seq_len")
+            forecaster = stf.spacetimeformer_model.Spacetimeformer_Forecaster(
+                d_x=x_dim,
+                d_yc=yc_dim,
+                d_yt=yt_dim,
+                max_seq_len=max_seq_len,
+                start_token_len=config.start_token_len,
+                attn_factor=config.attn_factor,
+                d_model=config.d_model,
+                d_queries_keys=config.d_qk,
+                d_values=config.d_v,
+                n_heads=config.n_heads,
+                e_layers=config.enc_layers,
+                d_layers=config.dec_layers,
+                d_ff=config.d_ff,
+                dropout_emb=config.dropout_emb,
+                dropout_attn_out=config.dropout_attn_out,
+                dropout_attn_matrix=config.dropout_attn_matrix,
+                dropout_qkv=config.dropout_qkv,
+                dropout_ff=config.dropout_ff,
+                pos_emb_type=config.pos_emb_type,
+                use_final_norm=not config.no_final_norm,
+                global_self_attn=config.global_self_attn,
+                local_self_attn=config.local_self_attn,
+                global_cross_attn=config.global_cross_attn,
+                local_cross_attn=config.local_cross_attn,
+                performer_kernel=config.performer_kernel,
+                performer_redraw_interval=config.performer_redraw_interval,
+                attn_time_windows=config.attn_time_windows,
+                use_shifted_time_windows=config.use_shifted_time_windows,
+                norm=config.norm,
+                activation=config.activation,
+                init_lr=config.init_lr,
+                base_lr=config.base_lr,
+                warmup_steps=config.warmup_steps,
+                decay_factor=config.decay_factor,
+                initial_downsample_convs=config.initial_downsample_convs,
+                intermediate_downsample_convs=config.intermediate_downsample_convs,
+                embed_method=config.embed_method,
+                l2_coeff=config.l2_coeff,
+                loss=config.loss,
+                class_loss_imp=config.class_loss_imp,
+                recon_loss_imp=config.recon_loss_imp,
+                time_emb_dim=config.time_emb_dim,
+                null_value=config.null_value,
+                pad_value=config.pad_value,
+                linear_window=config.linear_window,
+                use_revin=config.use_revin,
+                linear_shared_weights=config.linear_shared_weights,
+                use_seasonal_decomp=config.use_seasonal_decomp,
+                use_val=not config.no_val,
+                use_time=not config.no_time,
+                use_space=not config.no_space,
+                use_given=not config.no_given,
+                recon_mask_skip_all=config.recon_mask_skip_all,
+                recon_mask_max_seq_len=config.recon_mask_max_seq_len,
+                recon_mask_drop_seq=config.recon_mask_drop_seq,
+                recon_mask_drop_standard=config.recon_mask_drop_standard,
+                recon_mask_drop_full=config.recon_mask_drop_full,
+            )
+        return forecaster
 
-        # inputs_Transformer = tf.keras.Input(shape=np.shape(test_images_forTransformer[0,:,:,:]))
-        inputs_Transformer = tf.keras.Input(shape=(8, self.featLength, 2))
+    def create_parser():
+        model = sys.argv[1]
+        dset = sys.argv[2]
+        # Throw error now before we get confusing parser issues
+        assert (
+            model in _MODELS
+        ), f"Unrecognized model (`{model}`). Options include: {_MODELS}"
+        assert dset in _DSETS, f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
 
-        # # First CNN
-        x = layers.Dropout(0.1)(inputs_CNN)
-        x = layers.Conv2D(3 * f, kernel_size=(5, 7), activation='LeakyReLU',  # LeakyReLU
-                                kernel_regularizer='l2', padding='same')(x)
-        x = layers.AveragePooling2D((2,3))(x)
-        x = layers.BatchNormalization()(x)
+        parser = ArgumentParser()
+        parser.add_argument("model")
+        parser.add_argument("dset")
 
-        # Second CNN
-        x = layers.Conv2D(2 * f, kernel_size=(3, 5), activation='LeakyReLU',
-                                kernel_regularizer='l2', padding='same')(x)
-        x = layers.AveragePooling2D((2, 2))(x)
-        x = layers.BatchNormalization()(x)
+        if dset == "stocks":
+            parser.add_argument("--train_data_path", type=str, default="spacetimeformer/data/train",
+                                help="Path to the training data for the 'stocks' dataset")
+            parser.add_argument("--test_data_path", type=str, default="spacetimeformer/data/test",
+                                help="Path to the test data for the 'stocks' dataset")
+            parser.add_argument("--oos_data_path", type=str, default="spacetimeformer/data/oos",
+                                help="Path to the out-of-sample data for the 'stocks' dataset")
+            parser.add_argument("--context_points", type=int, required=True, help="Number of context points")
+            parser.add_argument("--target_points", type=int, required=True, help="Number of target points to predict")
+            parser.add_argument("--epochs", type=int, required=True, help="Number of training epochs")
+        stf.data.DataModule.add_cli(parser)
 
-        # # Third CNN
-        x = layers.Conv2D(1 * f, kernel_size=(3, 3), activation='LeakyReLU',  # (3,3)
-                                kernel_regularizer='l2', padding='same')(x)
-        x = layers.AveragePooling2D((1, 1))(x) # (2,2)
-        x = layers.BatchNormalization()(x)
+        if model == "spacetimeformer":
+            stf.spacetimeformer_model.Spacetimeformer_Forecaster.add_cli(parser)
+        stf.callbacks.TimeMaskedLossCallback.add_cli(parser)
 
-        x = layers.Flatten()(x)
-        x = layers.Dropout(0.35)(x)
-        x = layers.Dense(256, activation='tanh')(x)  # 256
-        x = layers.BatchNormalization()(x)
-        x = layers.Dense(64, activation='tanh')(x)  # 64
-        x = layers.BatchNormalization()(x)
+        parser.add_argument("--wandb", action="store_true")
+        parser.add_argument("--plot", action="store_true")
+        parser.add_argument("--plot_samples", type=int, default=8)
+        parser.add_argument("--attn_plot", action="store_true")
+        parser.add_argument("--debug", action="store_true")
+        parser.add_argument("--run_name", type=str, required=True)
+        parser.add_argument("--accumulate", type=int, default=1)
+        parser.add_argument("--val_check_interval", type=float, default=1.0)
+        parser.add_argument("--limit_val_batches", type=float, default=1.0)
+        parser.add_argument("--no_earlystopping", action="store_true")
+        parser.add_argument("--patience", type=int, default=5)
+        parser.add_argument(
+            "--trials", type=int, default=1, help="How many consecutive trials to run"
+        )
+        if len(sys.argv) > 3 and sys.argv[3] == "-h":
+            parser.print_help()
+            sys.exit(0)
+        return parser
 
-        x2 = layers.Flatten()(inputs_Transformer)
-        x2 = layers.Dropout(0.15)(x2)  #.15
-        x2 = layers.Dense(1024, activation='tanh')(x2)  # 512
-        x2 = layers.BatchNormalization()(x2)
-        x2 = layers.Dense(512, activation='tanh')(x2)  # 256
-        x2 = layers.BatchNormalization()(x2)
-        x2 = tf.expand_dims(x2, -1) # Need to reshape
+    def main(args):
+        # Initialization and Setup
+        log_dir = os.getenv("STF_LOG_DIR", "./data/STF_LOG_DIR")
+        args.use_gpu = False
+        device = torch.device("cpu")
+        # device = torch.device("cuda" if torch.cuda.is_available() and args.use_gpu else "cpu")
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
 
-        for i in range(num_transformer_blocks):
-            x2 = transformer_encoder(x2, head_size, num_heads, ff_dim, dropout)
-        x2 = layers.GlobalAveragePooling1D(data_format="channels_first")(x2)
-        for dim in mlp_units:
-            x2 = layers.Dense(dim, activation="tanh")(x2)  # relu
-            x2 = layers.Dropout(.1)(x2)
+        if args.wandb:
+            import wandb
+            project = os.getenv("STF_WANDB_PROJ")
+            entity = os.getenv("STF_WANDB_ACCT")
+            experiment = wandb.init(project=project, entity=entity, config=args, dir=log_dir, reinit=True)
+            config = wandb.config
+            wandb.run.name = args.run_name
+            wandb.run.save()
+            logger = pl.loggers.WandbLogger(experiment=experiment, save_dir=log_dir)
 
-        x2 = layers.Concatenate()([x,x2])
-        outputs = layers.Dense(1, activation="linear")(x2)  # linear
+        # Data Preparation
+        if args.dset == "stocks":
+            print('FFUUUUCK')
+            # Custom DataLoader for 'stocks'
+            args.null_value = None # NULL_VAL
+            args.pad_value = None
 
-        self.model = tf.keras.Model(
-            inputs=[inputs_CNN,inputs_Transformer],
-            outputs=outputs)
+            folder='spacetimeformer/data/oos'
+            xt_holder = []  # Initialize xt_holder as an empty list to hold tensors
+            for i in os.listdir(folder):  # loop over data in the oos folder by ticker symbol
+                dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=i, context_length=args.context_points)
+                dataloader = DataLoader(dataset, batch_size=1000, shuffle=False)  # Batch size of 1000 ensures all data is in one batch
+                for batch_idx, (context) in enumerate(dataloader):
+                    # Unpack batch into x_c, y_c, x_t, y_t
+                    x_t = context[:, -args.context_points:, :]  # Context features
+                    xt_holder.append(x_t[-1,:,:])  # Append the last item of x_t to xt_holder
 
-        # opt = tf.keras.optimizers.Adam(learning_rate=5.0*5.5e-6) # e-6
-        opt = tf.keras.optimizers.legacy.Adam(learning_rate=5.0*5.5e-6) # e-6  # Legacy version runs faster on M1/M2
-        self.model.compile(optimizer=opt,
-            metrics=[custom_metric_function], # Sorrentino
-            loss=custom_loss_function, # Ave Ret
-                        )
-        return self
-    
-    def LoadModelFromWeights(self):
-        # opt = tf.keras.optimizers.Adam(learning_rate=5.0*5.5e-6) # e-6
-        opt = tf.keras.optimizers.legacy.Adam(learning_rate=5.0*5.5e-6) # e-6  # Legacy version runs faster on M1/M2
-        # Custom Loss function
-        def custom_loss_function(y_true, y_pred):
-            positions = tf.math.multiply(y_true, y_pred) + .000001
-            losses = positions[positions < 0] + .000001
-            sh = -tf.math.reduce_mean(positions)
-            return sh
+            # Ensure torch.stack() is called outside the loop, after xt_holder has collected all tensors
+            xt_holder = torch.stack(xt_holder, dim=0)
+            print('Eval Dataset Shape: ', xt_holder.shape)
 
-        # Custom Metric function  - Average Ret
-        def custom_metric_function(y_true, y_pred):
-            positions = tf.math.multiply(y_true, y_pred) + .000001
-            sh = tf.math.reduce_mean(positions)
-            return sh
+        # Model Training and Evaluation
+        forecaster = create_model(args)
+        forecaster = forecaster.to(device)  # Move the model to the specified device
+    # 2/24
+        output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/feb24_2024.pth"
 
-        # checkpoint = './models/Transformer_CNN_66a7sh.h5'
-        # checkpoint='./models/Transformer_CNN.h5'
-        checkpoint='./models/Transformer_CNN_all.h5'
-        self.model.load_weights(checkpoint)
-        # self.model.summary()
-        return self
+        # Load the weights into the model
+        # forecaster.load_state_dict(torch.load(output_path))
+        forecaster.load_state_dict(torch.load(output_path, map_location=torch.device('cpu')))
+
+        stock_names = [i[:-4] for i in os.listdir(folder)]  # Extract stock names from filenames
+        print('STOCK NAMED',stock_names)
+        if args.dset == "stocks":
+            forecaster.eval()
+            with torch.no_grad():
+                x_c = xt_holder[:, args.target_points:, :]
+                y_c = xt_holder[:, args.target_points:, [3, 4]]
+                x_t = xt_holder[:, -args.target_points:, :]  # Assuming x_t is used for prediction
+                y_t = xt_holder[:, -args.target_points:, [3, 4]]
+
+                x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
+                model_output = forecaster(x_c, y_c, x_t, y_t)
+                
+                predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+                predictions = predictions.cpu().detach().numpy()  # Move to CPU and convert to numpy
+
+                # Separate 'close' and 'volatility' values
+                close_values = predictions[:, :, 0]  # Assuming 'close' values are the first in the last dimension
+                volatility_values = predictions[:, :, 1]  # Assuming 'volatility' values are the second
+
+                # Flatten 'close' and 'volatility' arrays
+                close_flattened = close_values.reshape(predictions.shape[0], -1)
+                volatility_flattened = volatility_values.reshape(predictions.shape[0], -1)
+
+                # Concatenate the flattened 'close' and 'volatility' arrays horizontally
+                predictions_flattened = np.hstack((close_flattened, volatility_flattened))
+
+                # Create column names for the DataFrame
+                close_columns = [f'Close_{i+1}' for i in range(close_values.shape[1])]
+                volatility_columns = [f'Volatility_{i+1}' for i in range(volatility_values.shape[1])]
+                column_names = close_columns + volatility_columns
+
+                # Assuming each sample's predictions are now correctly ordered and flattened
+                if len(predictions_flattened) == len(stock_names):
+                    # Create the DataFrame with the reshaped predictions
+                    predictions_df = pd.DataFrame(predictions_flattened, columns=column_names, index=stock_names)
+
+                    # Save to CSV with stock names as row indices
+                    predictions_df.to_csv('oos_predictions.csv')
+                else:
+                    print("Mismatch between the number of predictions and the number of stock names.")
+
+        # WANDB Experiment Finish (if applicable)
+        if args.wandb:
+            wandb.finish()
+
+    if __name__ == "__main__":
+        parser = create_parser()
+        args = parser.parse_args()
+        main(args)
     
     def getOptionPositions(self):
         # self.connectIB()
@@ -659,6 +782,7 @@ class Stock42():
         self.GTD = target_date_string
         return
     
+
 # Run it
 if __name__ == "__main__":
     stock = Stock42()
