@@ -367,7 +367,7 @@ class Stock42():
                 if feat == 'vclose':
                     volmu = rollmu
                     volstd = rollstd
-
+            print('Fuck')
             new_row = {'ticker': t, 'closemu': closemu.iloc[-1], 'closesig': closestd.iloc[-1],
                        'volmu': volmu.iloc[-1], 'volsig': volstd.iloc[-1]}
             print('new row:',new_row)
