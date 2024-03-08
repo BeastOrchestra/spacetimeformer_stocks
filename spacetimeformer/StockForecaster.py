@@ -34,7 +34,6 @@ from torch.utils.data import DataLoader
 import csv
 
 class Stock42():
-
     def __init__(self):
         self.modName = '600x68a7sh-2.45S10.42L'
         self.tix = ['AAPL','GOOG','TSLA','NFLX','DHR',
@@ -469,154 +468,153 @@ class Stock42():
             )
         return forecaster
 
-    def create_parser():
-        model = sys.argv[1]
-        dset = sys.argv[2]
-        # Throw error now before we get confusing parser issues
-        assert (
-            model in _MODELS
-        ), f"Unrecognized model (`{model}`). Options include: {_MODELS}"
-        assert dset in _DSETS, f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
+    # def create_parser():
+    #     model = sys.argv[1]
+    #     dset = sys.argv[2]
+    #     # Throw error now before we get confusing parser issues
+    #     assert (
+    #         model in _MODELS
+    #     ), f"Unrecognized model (`{model}`). Options include: {_MODELS}"
+    #     assert dset in _DSETS, f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
 
-        parser = ArgumentParser()
-        parser.add_argument("model")
-        parser.add_argument("dset")
+    #     parser = ArgumentParser()
+    #     parser.add_argument("model")
+    #     parser.add_argument("dset")
 
-        if dset == "stocks":
-            parser.add_argument("--train_data_path", type=str, default="spacetimeformer/data/train",
-                                help="Path to the training data for the 'stocks' dataset")
-            parser.add_argument("--test_data_path", type=str, default="spacetimeformer/data/test",
-                                help="Path to the test data for the 'stocks' dataset")
-            parser.add_argument("--oos_data_path", type=str, default="spacetimeformer/data/oos",
-                                help="Path to the out-of-sample data for the 'stocks' dataset")
-            parser.add_argument("--context_points", type=int, required=True, help="Number of context points")
-            parser.add_argument("--target_points", type=int, required=True, help="Number of target points to predict")
-            parser.add_argument("--epochs", type=int, required=True, help="Number of training epochs")
-        stf.data.DataModule.add_cli(parser)
+    #     if dset == "stocks":
+    #         parser.add_argument("--train_data_path", type=str, default="spacetimeformer/data/train",
+    #                             help="Path to the training data for the 'stocks' dataset")
+    #         parser.add_argument("--test_data_path", type=str, default="spacetimeformer/data/test",
+    #                             help="Path to the test data for the 'stocks' dataset")
+    #         parser.add_argument("--oos_data_path", type=str, default="spacetimeformer/data/oos",
+    #                             help="Path to the out-of-sample data for the 'stocks' dataset")
+    #         parser.add_argument("--context_points", type=int, required=True, help="Number of context points")
+    #         parser.add_argument("--target_points", type=int, required=True, help="Number of target points to predict")
+    #         parser.add_argument("--epochs", type=int, required=True, help="Number of training epochs")
+    #     stf.data.DataModule.add_cli(parser)
 
-        if model == "spacetimeformer":
-            stf.spacetimeformer_model.Spacetimeformer_Forecaster.add_cli(parser)
-        stf.callbacks.TimeMaskedLossCallback.add_cli(parser)
+    #     if model == "spacetimeformer":
+    #         stf.spacetimeformer_model.Spacetimeformer_Forecaster.add_cli(parser)
+    #     stf.callbacks.TimeMaskedLossCallback.add_cli(parser)
 
-        parser.add_argument("--wandb", action="store_true")
-        parser.add_argument("--plot", action="store_true")
-        parser.add_argument("--plot_samples", type=int, default=8)
-        parser.add_argument("--attn_plot", action="store_true")
-        parser.add_argument("--debug", action="store_true")
-        parser.add_argument("--run_name", type=str, required=True)
-        parser.add_argument("--accumulate", type=int, default=1)
-        parser.add_argument("--val_check_interval", type=float, default=1.0)
-        parser.add_argument("--limit_val_batches", type=float, default=1.0)
-        parser.add_argument("--no_earlystopping", action="store_true")
-        parser.add_argument("--patience", type=int, default=5)
-        parser.add_argument(
-            "--trials", type=int, default=1, help="How many consecutive trials to run"
-        )
-        if len(sys.argv) > 3 and sys.argv[3] == "-h":
-            parser.print_help()
-            sys.exit(0)
-        return parser
+    #     parser.add_argument("--wandb", action="store_true")
+    #     parser.add_argument("--plot", action="store_true")
+    #     parser.add_argument("--plot_samples", type=int, default=8)
+    #     parser.add_argument("--attn_plot", action="store_true")
+    #     parser.add_argument("--debug", action="store_true")
+    #     parser.add_argument("--run_name", type=str, required=True)
+    #     parser.add_argument("--accumulate", type=int, default=1)
+    #     parser.add_argument("--val_check_interval", type=float, default=1.0)
+    #     parser.add_argument("--limit_val_batches", type=float, default=1.0)
+    #     parser.add_argument("--no_earlystopping", action="store_true")
+    #     parser.add_argument("--patience", type=int, default=5)
+    #     parser.add_argument(
+    #         "--trials", type=int, default=1, help="How many consecutive trials to run"
+    #     )
+    #     if len(sys.argv) > 3 and sys.argv[3] == "-h":
+    #         parser.print_help()
+    #         sys.exit(0)
+    #     return parser
 
-    def main(args):
-        # Initialization and Setup
-        log_dir = os.getenv("STF_LOG_DIR", "./data/STF_LOG_DIR")
-        args.use_gpu = False
-        device = torch.device("cpu")
-        # device = torch.device("cuda" if torch.cuda.is_available() and args.use_gpu else "cpu")
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+    # def main(args):
+    #     # Initialization and Setup
+    #     log_dir = os.getenv("STF_LOG_DIR", "./data/STF_LOG_DIR")
+    #     args.use_gpu = False
+    #     device = torch.device("cpu")
+    #     # device = torch.device("cuda" if torch.cuda.is_available() and args.use_gpu else "cpu")
+    #     if not os.path.exists(log_dir):
+    #         os.makedirs(log_dir)
 
-        if args.wandb:
-            import wandb
-            project = os.getenv("STF_WANDB_PROJ")
-            entity = os.getenv("STF_WANDB_ACCT")
-            experiment = wandb.init(project=project, entity=entity, config=args, dir=log_dir, reinit=True)
-            config = wandb.config
-            wandb.run.name = args.run_name
-            wandb.run.save()
-            logger = pl.loggers.WandbLogger(experiment=experiment, save_dir=log_dir)
+    #     if args.wandb:
+    #         import wandb
+    #         project = os.getenv("STF_WANDB_PROJ")
+    #         entity = os.getenv("STF_WANDB_ACCT")
+    #         experiment = wandb.init(project=project, entity=entity, config=args, dir=log_dir, reinit=True)
+    #         config = wandb.config
+    #         wandb.run.name = args.run_name
+    #         wandb.run.save()
+    #         logger = pl.loggers.WandbLogger(experiment=experiment, save_dir=log_dir)
 
-        # Data Preparation
-        if args.dset == "stocks":
-            print('FFUUUUCK')
-            # Custom DataLoader for 'stocks'
-            args.null_value = None # NULL_VAL
-            args.pad_value = None
+    #     # Data Preparation
+    #     if args.dset == "stocks":
+    #         # Custom DataLoader for 'stocks'
+    #         args.null_value = None # NULL_VAL
+    #         args.pad_value = None
 
-            folder='spacetimeformer/data/oos'
-            xt_holder = []  # Initialize xt_holder as an empty list to hold tensors
-            for i in os.listdir(folder):  # loop over data in the oos folder by ticker symbol
-                dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=i, context_length=args.context_points)
-                dataloader = DataLoader(dataset, batch_size=1000, shuffle=False)  # Batch size of 1000 ensures all data is in one batch
-                for batch_idx, (context) in enumerate(dataloader):
-                    # Unpack batch into x_c, y_c, x_t, y_t
-                    x_t = context[:, -args.context_points:, :]  # Context features
-                    xt_holder.append(x_t[-1,:,:])  # Append the last item of x_t to xt_holder
+    #         folder='spacetimeformer/data/oos'
+    #         xt_holder = []  # Initialize xt_holder as an empty list to hold tensors
+    #         for i in os.listdir(folder):  # loop over data in the oos folder by ticker symbol
+    #             dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=i, context_length=args.context_points)
+    #             dataloader = DataLoader(dataset, batch_size=1000, shuffle=False)  # Batch size of 1000 ensures all data is in one batch
+    #             for batch_idx, (context) in enumerate(dataloader):
+    #                 # Unpack batch into x_c, y_c, x_t, y_t
+    #                 x_t = context[:, -args.context_points:, :]  # Context features
+    #                 xt_holder.append(x_t[-1,:,:])  # Append the last item of x_t to xt_holder
 
-            # Ensure torch.stack() is called outside the loop, after xt_holder has collected all tensors
-            xt_holder = torch.stack(xt_holder, dim=0)
-            print('Eval Dataset Shape: ', xt_holder.shape)
+    #         # Ensure torch.stack() is called outside the loop, after xt_holder has collected all tensors
+    #         xt_holder = torch.stack(xt_holder, dim=0)
+    #         print('Eval Dataset Shape: ', xt_holder.shape)
 
-        # Model Training and Evaluation
-        forecaster = create_model(args)
-        forecaster = forecaster.to(device)  # Move the model to the specified device
-    # 2/24
-        output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/feb24_2024.pth"
+    #     # Model Training and Evaluation
+    #     forecaster = create_model(args)
+    #     forecaster = forecaster.to(device)  # Move the model to the specified device
+    # # 2/24
+    #     output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/feb24_2024.pth"
 
-        # Load the weights into the model
-        # forecaster.load_state_dict(torch.load(output_path))
-        forecaster.load_state_dict(torch.load(output_path, map_location=torch.device('cpu')))
+    #     # Load the weights into the model
+    #     # forecaster.load_state_dict(torch.load(output_path))
+    #     forecaster.load_state_dict(torch.load(output_path, map_location=torch.device('cpu')))
 
-        stock_names = [i[:-4] for i in os.listdir(folder)]  # Extract stock names from filenames
-        print('STOCK NAMED',stock_names)
-        if args.dset == "stocks":
-            forecaster.eval()
-            with torch.no_grad():
-                x_c = xt_holder[:, args.target_points:, :]
-                y_c = xt_holder[:, args.target_points:, [3, 4]]
-                x_t = xt_holder[:, -args.target_points:, :]  # Assuming x_t is used for prediction
-                y_t = xt_holder[:, -args.target_points:, [3, 4]]
+    #     stock_names = [i[:-4] for i in os.listdir(folder)]  # Extract stock names from filenames
+    #     print('STOCK NAMED',stock_names)
+    #     if args.dset == "stocks":
+    #         forecaster.eval()
+    #         with torch.no_grad():
+    #             x_c = xt_holder[:, args.target_points:, :]
+    #             y_c = xt_holder[:, args.target_points:, [3, 4]]
+    #             x_t = xt_holder[:, -args.target_points:, :]  # Assuming x_t is used for prediction
+    #             y_t = xt_holder[:, -args.target_points:, [3, 4]]
 
-                x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
-                model_output = forecaster(x_c, y_c, x_t, y_t)
+    #             x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
+    #             model_output = forecaster(x_c, y_c, x_t, y_t)
                 
-                predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-                predictions = predictions.cpu().detach().numpy()  # Move to CPU and convert to numpy
+    #             predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+    #             predictions = predictions.cpu().detach().numpy()  # Move to CPU and convert to numpy
 
-                # Separate 'close' and 'volatility' values
-                close_values = predictions[:, :, 0]  # Assuming 'close' values are the first in the last dimension
-                volatility_values = predictions[:, :, 1]  # Assuming 'volatility' values are the second
+    #             # Separate 'close' and 'volatility' values
+    #             close_values = predictions[:, :, 0]  # Assuming 'close' values are the first in the last dimension
+    #             volatility_values = predictions[:, :, 1]  # Assuming 'volatility' values are the second
 
-                # Flatten 'close' and 'volatility' arrays
-                close_flattened = close_values.reshape(predictions.shape[0], -1)
-                volatility_flattened = volatility_values.reshape(predictions.shape[0], -1)
+    #             # Flatten 'close' and 'volatility' arrays
+    #             close_flattened = close_values.reshape(predictions.shape[0], -1)
+    #             volatility_flattened = volatility_values.reshape(predictions.shape[0], -1)
 
-                # Concatenate the flattened 'close' and 'volatility' arrays horizontally
-                predictions_flattened = np.hstack((close_flattened, volatility_flattened))
+    #             # Concatenate the flattened 'close' and 'volatility' arrays horizontally
+    #             predictions_flattened = np.hstack((close_flattened, volatility_flattened))
 
-                # Create column names for the DataFrame
-                close_columns = [f'Close_{i+1}' for i in range(close_values.shape[1])]
-                volatility_columns = [f'Volatility_{i+1}' for i in range(volatility_values.shape[1])]
-                column_names = close_columns + volatility_columns
+    #             # Create column names for the DataFrame
+    #             close_columns = [f'Close_{i+1}' for i in range(close_values.shape[1])]
+    #             volatility_columns = [f'Volatility_{i+1}' for i in range(volatility_values.shape[1])]
+    #             column_names = close_columns + volatility_columns
 
-                # Assuming each sample's predictions are now correctly ordered and flattened
-                if len(predictions_flattened) == len(stock_names):
-                    # Create the DataFrame with the reshaped predictions
-                    predictions_df = pd.DataFrame(predictions_flattened, columns=column_names, index=stock_names)
+    #             # Assuming each sample's predictions are now correctly ordered and flattened
+    #             if len(predictions_flattened) == len(stock_names):
+    #                 # Create the DataFrame with the reshaped predictions
+    #                 predictions_df = pd.DataFrame(predictions_flattened, columns=column_names, index=stock_names)
 
-                    # Save to CSV with stock names as row indices
-                    predictions_df.to_csv('oos_predictions.csv')
-                else:
-                    print("Mismatch between the number of predictions and the number of stock names.")
+    #                 # Save to CSV with stock names as row indices
+    #                 predictions_df.to_csv('oos_predictions.csv')
+    #             else:
+    #                 print("Mismatch between the number of predictions and the number of stock names.")
 
-        # WANDB Experiment Finish (if applicable)
-        if args.wandb:
-            wandb.finish()
+    #     # WANDB Experiment Finish (if applicable)
+    #     if args.wandb:
+    #         wandb.finish()
 
-    if __name__ == "__main__":
-        parser = create_parser()
-        args = parser.parse_args()
-        main(args)
+    # if __name__ == "__main__":
+    #     parser = create_parser()
+    #     args = parser.parse_args()
+    #     main(args)
     
     def getOptionPositions(self):
         # self.connectIB()
