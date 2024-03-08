@@ -380,10 +380,10 @@ class Stock42():
             self.AllData=self.AllData.reset_index(drop=True)
             oos_len = 252  #### Should be user defined (oos, tr, etc...)
             tr_len = int(.75*len(self.AllData[:-oos_len]))
-            self.AllData[:tr_len].to_csv('./data/train/' + t + '.csv')
-            self.AllData[tr_len:-oos_len].to_csv('./data/test/' + t + '.csv')
-            self.AllData[-oos_len:].to_csv('./data/oos/' + t + '.csv')
-        self.MuSigTix.to_csv('./data/TixMuSig.csv')
+            self.AllData[:tr_len].to_csv('./spacetimeformer/data/train/' + t + '.csv')
+            self.AllData[tr_len:-oos_len].to_csv('./spacetimeformer/data/test/' + t + '.csv')
+            self.AllData[-oos_len:].to_csv('./spacetimeformer/data/oos/' + t + '.csv')
+        self.MuSigTix.to_csv('./spacetimeformer/data/TixMuSig.csv')
         return
 
     _MODELS = ["spacetimeformer"]
