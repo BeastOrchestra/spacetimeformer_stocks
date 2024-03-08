@@ -370,7 +370,7 @@ class Stock42():
             print('Fuck')
             new_row = {'ticker': t, 'closemu': closemu.iloc[-1], 'closesig': closestd.iloc[-1],
                        'volmu': volmu.iloc[-1], 'volsig': volstd.iloc[-1]}
-            print('new row:',new_row)
+            print(type(self.MuSigTix))
             self.MuSigTix = self.MuSigTix.append(new_row, ignore_index=True)
                 # if feat not in ["Close", "vclose"]:
                 #     self.AllData[feat]=(self.AllData[feat]-self.AllData[feat].rolling(252).mean())/self.AllData[feat].rolling(252).std()
