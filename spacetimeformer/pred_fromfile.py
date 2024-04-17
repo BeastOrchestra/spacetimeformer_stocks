@@ -382,16 +382,15 @@ def main(args):
         #                                                       batch_size=args.batch_size, 
         #                                                       shuffle=False, num_workers=4)
         folder='spacetimeformer/data/oos'
-        print(os.listdir(folder))
         xt_holder = []  # Initialize xt_holder as an empty list to hold tensors
-        for i in os.listdir(folder):  # loop over data in the oos folder by ticker symbol
-            print(i,folder)
-            dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=i, context_length=args.context_points)
-            dataloader = DataLoader(dataset, batch_size=1000, shuffle=False)  # Batch size of 1000 ensures all data is in one batch
-            for batch_idx, (context) in enumerate(dataloader):
-                # Unpack batch into x_c, y_c, x_t, y_t
-                x_t = context[:, -args.context_points:, :]  # Context features
-                xt_holder.append(x_t[-1,:,:])  # Append the last item of x_t to xt_holder
+        for filename in os.listdir(folder):
+            if filename.endswith('.csv'):  # Check if the file ends with '.csv'
+                filepath = os.path.join(folder, filename)
+                dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=filename, context_length=args.context_points)
+                dataloader = DataLoader(dataset, batch_size=1000, shuffle=False)
+                for batch_idx, context in enumerate(dataloader):
+                    x_t = context[:, -args.context_points:, :]
+                    xt_holder.append(x_t[-1,:,:])
 
         # Ensure torch.stack() is called outside the loop, after xt_holder has collected all tensors
         xt_holder = torch.stack(xt_holder, dim=0)
@@ -415,7 +414,9 @@ def main(args):
     # forecaster.load_state_dict(torch.load(output_path))
     forecaster.load_state_dict(torch.load(output_path, map_location=torch.device('cpu')))
 
-    stock_names = [i[:-4] for i in os.listdir(folder)]  # Extract stock names from filenames
+    # stock_names = [i[:-4] for i in os.listdir(folder)]  # Extract stock names from filenames
+    stock_names = [filename[:-4] for filename in os.listdir(folder) if filename.endswith('.csv')]# To deal with the .DS_Store file issue
+
     print('STOCK NAMED',stock_names)
     if args.dset == "stocks":
         forecaster.eval()
