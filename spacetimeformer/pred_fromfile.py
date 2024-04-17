@@ -382,8 +382,10 @@ def main(args):
         #                                                       batch_size=args.batch_size, 
         #                                                       shuffle=False, num_workers=4)
         folder='spacetimeformer/data/oos'
+        print(os.listdir(folder))
         xt_holder = []  # Initialize xt_holder as an empty list to hold tensors
         for i in os.listdir(folder):  # loop over data in the oos folder by ticker symbol
+            print(i,folder)
             dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=i, context_length=args.context_points)
             dataloader = DataLoader(dataset, batch_size=1000, shuffle=False)  # Batch size of 1000 ensures all data is in one batch
             for batch_idx, (context) in enumerate(dataloader):
