@@ -400,13 +400,10 @@ def main(args):
     forecaster = create_model(args)
     forecaster = forecaster.to(device)  # Move the model to the specified device
 
-# 2/14
-    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/60c73v100ctx10tgt5e6d512_2048.pth"
-# 2/15    
+# Current best 
     output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/mar29_2024_p57_v71.pth"
-# 2/24
-    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/feb24_2024.pth"
-
+# 4/22
+    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V75P60_4_25.pth"
 
     # gdown.download(url, output_path, quiet=False)
 
