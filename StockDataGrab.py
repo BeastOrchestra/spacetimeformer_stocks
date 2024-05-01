@@ -344,9 +344,9 @@ class Stock42():
                 # # Original
                 oos_len = 252  #### Should be user defined (oos, tr, etc...)
                 tr_len = int(.80*len(self.AllData[:-oos_len]))
-                self.AllData[:tr_len].to_csv('.spacetimeformer/data/train/' + t + '.csv')
-                self.AllData[tr_len:-oos_len].to_csv('.spacetimeformer/data/test/' + t + '.csv')
-                self.AllData[-oos_len:].to_csv('.spacetimeformer/data/oos/' + t + '.csv')
+                self.AllData[:tr_len].to_csv('./spacetimeformer/data/train/' + t + '.csv')
+                self.AllData[tr_len:-oos_len].to_csv('./spacetimeformer/data/test/' + t + '.csv')
+                self.AllData[-oos_len:].to_csv('./spacetimeformer/data/oos/' + t + '.csv')
                 
                 # shuffled train/test - This will not work for Transformer since the inputs need to be sequential (not scattered)
                 # oos_len = 252
@@ -360,7 +360,7 @@ class Stock42():
                 # test_data.to_csv(f'./data/test/{t}.csv', index=False)
                 # oos_data.to_csv(f'./data/oos/{t}.csv', index=False)
 
-        self.MuSigTix.to_csv('./data/TixMuSig.csv')
+        self.MuSigTix.to_csv('./spacetimeformer/data/TixMuSig.csv')
         return
     
     def getOptionPositions(self):
