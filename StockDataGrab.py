@@ -333,7 +333,11 @@ class Stock42():
 
                 new_row = {'ticker': t, 'closemu': closemu.iloc[-1], 'closesig': closestd.iloc[-1],
                         'volmu': volmu.iloc[-1], 'volsig': volstd.iloc[-1]}
-                self.MuSigTix = self.MuSigTix.append(new_row, ignore_index=True)
+                # self.MuSigTix = self.MuSigTix.append(new_row, ignore_index=True)
+
+                new_row_df = pd.DataFrame([new_row])  # Convert new_row to a DataFrame
+                self.MuSigTix = pd.concat([self.MuSigTix, new_row_df], ignore_index=True)
+
                     # if feat not in ["Close", "vclose"]:
                     #     self.AllData[feat]=(self.AllData[feat]-self.AllData[feat].rolling(252).mean())/self.AllData[feat].rolling(252).std()
                     # else: # min max scaling
