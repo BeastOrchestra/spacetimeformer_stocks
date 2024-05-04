@@ -312,9 +312,12 @@ def create_callbacks(config, save_dir):
 # You will then estimate future ending location by looking at the last value in "a" and correcting w/ mu & sig
 def formatOutput(tops):
     # Only look at the top X
-    pwd
+    dir=os.getcwd()
+    print('current Dir:', dir)
     a = pd.read_csv('oos_predictions.csv', index_col=0)
-    b = pd.read_csv('TixMuSig.csv',index_col=1)
+    # b = pd.read_csv('TixMuSig.csv',index_col=1)
+    b = pd.read_csv('./spacetimeformer/data/TixMuSig.csv',index_col=1)
+
 
     col = ['Close_'+str(i) for i in range(1,11)]
     Vcol = ['Volatility_'+str(i) for i in range(1,11)]
