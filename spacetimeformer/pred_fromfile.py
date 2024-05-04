@@ -306,8 +306,13 @@ def create_callbacks(config, save_dir):
         )
     return callbacks
 
+# Notes for improving this section. Analysis indicates that the delta of the oos_predictions
+# is proportional to the return on the position. Larger delta implies larger return (pos & neg)
+# Therefore you want to sort based on the "a" dataframe for the largest and smallest changes
+# You will then estimate future ending location by looking at the last value in "a" and correcting w/ mu & sig
 def formatOutput(tops):
     # Only look at the top X
+    pwd
     a = pd.read_csv('oos_predictions.csv', index_col=0)
     b = pd.read_csv('TixMuSig.csv',index_col=1)
 
