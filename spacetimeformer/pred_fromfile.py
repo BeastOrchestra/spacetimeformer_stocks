@@ -310,12 +310,59 @@ def create_callbacks(config, save_dir):
 # is proportional to the return on the position. Larger delta implies larger return (pos & neg)
 # Therefore you want to sort based on the "a" dataframe for the largest and smallest changes
 # You will then estimate future ending location by looking at the last value in "a" and correcting w/ mu & sig
-def formatOutput(tops):
+
+# def formatOutput(tops):  # Original
+#     # Only look at the top X
+#     dir=os.getcwd()
+#     print('current Dir:', dir)
+#     a = pd.read_csv('oos_predictions.csv', index_col=0)
+#     # b = pd.read_csv('TixMuSig.csv',index_col=1)
+#     b = pd.read_csv('./spacetimeformer/data/TixMuSig.csv',index_col=1)
+
+
+#     col = ['Close_'+str(i) for i in range(1,11)]
+#     Vcol = ['Volatility_'+str(i) for i in range(1,11)]
+#     for i in a.index:
+#         a.loc[i][col] = a.loc[i][col]*b.loc[i].closesig + b.loc[i].closemu
+#         a.loc[i][Vcol] = a.loc[i][Vcol]*b.loc[i].volsig + b.loc[i].volmu
+
+#     current_date = datetime.datetime.now()
+#     formatted_date = f"{current_date.month}_{current_date.day}_{current_date.year}"
+#     a.to_csv('oos_predictions_'+formatted_date+'.csv')
+
+#     a['Price_PrctDelta'] = 100*(a['Close_10']-a['Close_1'])/a['Close_1']
+#     a['Volatility_PrctDelta'] = 100*(a['Volatility_10']-a['Volatility_1'])/a['Volatility_1']
+
+#     PossibleLongCalls = a[(a['Price_PrctDelta'] > 0) & (a['Volatility_PrctDelta'] > 0)]
+#     PossibleLongPuts = a[(a['Price_PrctDelta'] < 0) & (a['Volatility_PrctDelta'] > 0)]
+
+#     PossibleLongs = a[(a['Price_PrctDelta'] > 0)]
+#     PossibleShorts = a[(a['Price_PrctDelta'] < 0)]
+
+#     VolPump = a[(a['Volatility_PrctDelta'] > 0)]
+#     VolDump = a[(a['Volatility_PrctDelta'] < 0)]
+
+#     Calls=PossibleLongCalls[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=False)
+#     Puts=PossibleLongPuts[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=True)
+
+#     Longs=PossibleLongs[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=False)
+#     Shorts=PossibleShorts[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=True)
+
+#     LongVol=VolPump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=False)
+#     ShortVol=VolDump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=True)
+
+#     print('Long: ',Longs[Longs['Price_PrctDelta'] > 2].Price_PrctDelta[:tops])
+#     print('Short: ',Shorts[Shorts['Price_PrctDelta'] < -2].Price_PrctDelta[:tops])
+
+#     print('Long Calls: ', Calls[ (Calls['Price_PrctDelta'] > 2) &(Calls['Volatility_PrctDelta'] > 5)].Price_PrctDelta[:tops])
+#     print('Long Puts: ',Puts[ (Puts['Price_PrctDelta']< -2) & (Puts['Volatility_PrctDelta'] > 5)].Price_PrctDelta[:tops])
+
+#     print('Long Volatility: ',LongVol[LongVol.Volatility_PrctDelta > 20].Volatility_PrctDelta[:tops])
+#     print('Short Volatility: ',ShortVol[ShortVol.Volatility_PrctDelta < -20].Volatility_PrctDelta[:tops])
+def formatOutput(tops): # Revised 
     # Only look at the top X
-    dir=os.getcwd()
-    print('current Dir:', dir)
+
     a = pd.read_csv('oos_predictions.csv', index_col=0)
-    # b = pd.read_csv('TixMuSig.csv',index_col=1)
     b = pd.read_csv('./spacetimeformer/data/TixMuSig.csv',index_col=1)
 
 
@@ -329,9 +376,11 @@ def formatOutput(tops):
     formatted_date = f"{current_date.month}_{current_date.day}_{current_date.year}"
     a.to_csv('oos_predictions_'+formatted_date+'.csv')
 
-    a['Price_PrctDelta'] = 100*(a['Close_10']-a['Close_1'])/a['Close_1']
-    a['Volatility_PrctDelta'] = 100*(a['Volatility_10']-a['Volatility_1'])/a['Volatility_1']
+    a = pd.read_csv('oos_predictions.csv', index_col=0) # Use this to rank the predicted move
 
+    a['Price_PrctDelta'] = a['Close_10']-a['Close_1']
+    a['Volatility_PrctDelta'] = a['Volatility_10']-a['Volatility_1']
+# Instead of > | < 0, use specific thresholds that have been identified during returns analysis
     PossibleLongCalls = a[(a['Price_PrctDelta'] > 0) & (a['Volatility_PrctDelta'] > 0)]
     PossibleLongPuts = a[(a['Price_PrctDelta'] < 0) & (a['Volatility_PrctDelta'] > 0)]
 
@@ -349,15 +398,16 @@ def formatOutput(tops):
 
     LongVol=VolPump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=False)
     ShortVol=VolDump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=True)
+    eqThresh = .5
+    print('Long: ',Longs[Longs['Price_PrctDelta'] > eqThresh].Price_PrctDelta[:tops])
+    print('Short: ',Shorts[Shorts['Price_PrctDelta'] < -eqThresh].Price_PrctDelta[:tops])
+    Shorts[Shorts['Price_PrctDelta'] < -eqThresh].Price_PrctDelta[:tops].to_csv('shorts.csv')
+    optThresh = .5
+    print('Long Calls: ', Calls[ (Calls['Price_PrctDelta'] > eqThresh) &(Calls['Volatility_PrctDelta'] > optThresh)].Price_PrctDelta[:tops])
+    print('Long Puts: ',Puts[ (Puts['Price_PrctDelta']< -eqThresh) & (Puts['Volatility_PrctDelta'] > optThresh)].Price_PrctDelta[:tops])
 
-    print('Long: ',Longs[Longs['Price_PrctDelta'] > 2].Price_PrctDelta[:tops])
-    print('Short: ',Shorts[Shorts['Price_PrctDelta'] < -2].Price_PrctDelta[:tops])
-
-    print('Long Calls: ', Calls[ (Calls['Price_PrctDelta'] > 2) &(Calls['Volatility_PrctDelta'] > 5)].Price_PrctDelta[:tops])
-    print('Long Puts: ',Puts[ (Puts['Price_PrctDelta']< -2) & (Puts['Volatility_PrctDelta'] > 5)].Price_PrctDelta[:tops])
-
-    print('Long Volatility: ',LongVol[LongVol.Volatility_PrctDelta > 20].Volatility_PrctDelta[:tops])
-    print('Short Volatility: ',ShortVol[ShortVol.Volatility_PrctDelta < -20].Volatility_PrctDelta[:tops])
+    print('Long Volatility: ',LongVol[LongVol.Volatility_PrctDelta > optThresh].Volatility_PrctDelta[:tops])
+    print('Short Volatility: ',ShortVol[ShortVol.Volatility_PrctDelta < -optThresh].Volatility_PrctDelta[:tops])
 
 def main(args):
     # Initialization and Setup
@@ -380,7 +430,7 @@ def main(args):
 
     # Data Preparation
     if args.dset == "stocks":
-        print('FFUUUUCK')
+        print('Making Predictions...')
         # Custom DataLoader for 'stocks'
         args.null_value = None # NULL_VAL
         args.pad_value = None
@@ -412,8 +462,6 @@ def main(args):
     output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/mar29_2024_p57_v71.pth"
 # 4/22
     output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V75P60_4_25.pth"
-
-    # gdown.download(url, output_path, quiet=False)
 
     # Load the weights into the model
     # forecaster.load_state_dict(torch.load(output_path))
