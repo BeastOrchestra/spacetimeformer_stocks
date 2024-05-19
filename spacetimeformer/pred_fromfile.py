@@ -461,9 +461,9 @@ def main(args):
 # Current best
     # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/mar29_2024_p57_v71.pth"
 # 4/22
-    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V75P60_4_25.pth"
+    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V75P60_4_25.pth"
 # 5/17  
-    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/checkpoint_epoch_18.pth"
+    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/checkpoint_epoch_18.pth"
 
 
     # Load the weights into the model
