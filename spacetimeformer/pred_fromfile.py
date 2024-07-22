@@ -465,9 +465,9 @@ def main(args):
 # 5/17  
     # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/checkpoint_epoch_18.pth"
 # 5/23
-    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/72V_61P_5_23_2024.pth"
+    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/72V_61P_5_23_2024.pth"
 # 5/25
-    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V60P60_v-0.65-0.36p-0.1-0.24.pth"
+    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V60P60_v-0.65-0.36p-0.1-0.24.pth"
     
     # Load the weights into the model
     # forecaster.load_state_dict(torch.load(output_path))
