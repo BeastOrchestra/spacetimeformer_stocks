@@ -33,6 +33,7 @@ def create_model(config):
         yc_dim = 2 # Can reduce to specific features. i.e you could forecast only 'Close' (yc_dim=1)
         yt_dim = 2
 
+
     assert x_dim is not None
     assert yc_dim is not None
     assert yt_dim is not None
@@ -463,9 +464,9 @@ def main(args):
 # 4/22
     # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V75P60_4_25.pth"
 # Wrapped Model
-    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/WrappedAttn_sV_81_LV_86_sp_67_lp_62_Jul9.pth"
+    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/WrappedAttn_sV_81_LV_86_sp_67_lp_62_Jul9.pth"
 # 5/23
-    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/72V_61P_5_23_2024.pth"
+    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/72V_61P_5_23_2024.pth"
 # 5/25
     # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V60P60_v-0.65-0.36p-0.1-0.24.pth"
     
