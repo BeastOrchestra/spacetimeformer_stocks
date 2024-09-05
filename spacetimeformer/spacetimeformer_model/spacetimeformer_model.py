@@ -71,8 +71,8 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         recon_mask_drop_standard: float = 0.2,
         recon_mask_drop_full: float = 0.05,
         # erase here
-        twist_factor_row: float = 1.0,  # Add twist_factor_row
-        twist_factor_col: float = 1.0,  # Add twist_factor_col
+        # twist_factor_row: float = 1.0,  # Add twist_factor_row
+        # twist_factor_col: float = 1.0,  # Add twist_factor_col
         # end erase here
         verbose=True,
     ):
@@ -136,8 +136,8 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
             recon_mask_drop_standard=recon_mask_drop_standard,
             recon_mask_drop_full=recon_mask_drop_full,
             # erase here
-            twist_factor_row=twist_factor_row,  # Pass to Spacetimeformer
-            twist_factor_col=twist_factor_col   # Pass to Spacetimeformer
+            # twist_factor_row=twist_factor_row,  # Pass to Spacetimeformer
+            # twist_factor_col=twist_factor_col   # Pass to Spacetimeformer
 
             # end erase here
         )
