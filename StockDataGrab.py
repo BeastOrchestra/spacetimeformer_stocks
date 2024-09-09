@@ -181,7 +181,15 @@ class Stock42():
         am = arch_model(100*AllData['Ret72day']) # 72
         res = am.fit(update_freq=1, disp="off", show_warning=False)
         AllData['CondVol_72'] = res.conditional_volatility.values.reshape(-1,1)
-
+        # erase below
+        # Step 1: Replace inf and -inf with NaN
+        AllData['Ret240day'].replace([np.inf, -np.inf], np.nan, inplace=True)
+        # Step 2: Interpolate the NaN values (previously inf values)
+        AllData['Ret240day'].interpolate(method='nearest', inplace=True)
+        # Step 3: If any NaN values remain at the start/end, fill them with forward/backward fill
+        AllData['Ret240day'].fillna(method='ffill', inplace=True)  # Forward fill
+        AllData['Ret240day'].fillna(method='bfill', inplace=True)  # Backward fill
+        # end erase   
         am = arch_model(100*AllData['Ret240day']) # 240
         res = am.fit(update_freq=1, disp="off", show_warning=False)
         AllData['CondVol_240'] = res.conditional_volatility.values.reshape(-1,1)
