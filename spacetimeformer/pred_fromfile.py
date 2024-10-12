@@ -465,11 +465,12 @@ def main(args):
     # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V75P60_4_25.pth"
 # Wrapped Model
     # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/WrappedAttn_sV_81_LV_86_sp_67_lp_62_Jul9.pth"
-# 5/23
-    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/72V_61P_5_23_2024.pth"
+# 5/23 *** Preferred
+    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/72V_61P_5_23_2024.pth"
 # 5/25
     # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V60P60_v-0.65-0.36p-0.1-0.24.pth"
-    
+# 10/11
+    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/P_60V68_pr-.14to.17_vr-0.67to.53.pth"
     # Load the weights into the model
     # forecaster.load_state_dict(torch.load(output_path))
     forecaster.load_state_dict(torch.load(output_path, map_location=torch.device('cpu')))

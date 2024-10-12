@@ -1,11 +1,12 @@
+### Original Code
 from math import sqrt, log
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
 from ..utils.masking import TriangularCausalMask, ProbMask
-from performer_pytorch import FastAttention as _FastAttention
 
 
 class FullAttention(nn.Module):
@@ -19,10 +20,6 @@ class FullAttention(nn.Module):
         self.scale = scale
         self.mask_flag = mask_flag
         self.dropout = nn.Dropout(attention_dropout)
-
-        # Learnable parameters for toroidal twist
-        self.twist_factor_row = nn.Parameter(torch.tensor(1.0))  # Initialize with a value of 1.0
-        self.twist_factor_col = nn.Parameter(torch.tensor(1.0))  # Initialize with a value of 1.0
 
     def forward(self, queries, keys, values, attn_mask, output_attn=False):
         B, L, H, E = queries.shape
@@ -38,34 +35,14 @@ class FullAttention(nn.Module):
             attn_mask = attn_mask.unsqueeze(1)  # expand heads dimension
             scores.masked_fill_(attn_mask, -np.inf)
 
-        # Apply twisted toroidal attention wrap-around with learnable factors
-        scores = self.wrap_attention_scores(scores)
-
         A = torch.nan_to_num(self.dropout(torch.softmax(scale * scores, dim=-1)))
+        # A = self.dropout(torch.softmax(scale * scores, dim=-1))
         V = torch.einsum("bhls,bshd->blhd", A, values)
 
         if output_attn:
             return (V.contiguous(), A)
         else:
             return (V.contiguous(), None)
-
-    def wrap_attention_scores(self, scores):
-        batch_size, num_heads, seq_length, _ = scores.size()
-        wrap_around_scores = scores.clone()
-
-        # Convert learnable factors to integers for roll shifts
-        twist_factor_row = int(self.twist_factor_row.item())
-        twist_factor_col = int(self.twist_factor_col.item())
-
-        # Twisted toroidal wrap-around for rows
-        wrap_around_scores[:, :, 0, :] += scores[:, :, -1, :].roll(shifts=twist_factor_row, dims=-1)
-        wrap_around_scores[:, :, :, 0] += scores[:, :, :, -1].roll(shifts=twist_factor_col, dims=-2)
-
-        # Twisted toroidal wrap-around for columns
-        wrap_around_scores[:, :, :, -1] += scores[:, :, :, 0].roll(shifts=-twist_factor_col, dims=-2)
-        wrap_around_scores[:, :, -1, :] += scores[:, :, 0, :].roll(shifts=-twist_factor_row, dims=-1)
-
-        return wrap_around_scores
 
 
 class ProbAttention(nn.Module):
@@ -171,6 +148,9 @@ class ProbAttention(nn.Module):
         return context.transpose(2, 1).contiguous(), attn
 
 
+from performer_pytorch import FastAttention as _FastAttention
+
+
 class PerformerAttention(_FastAttention):
     def __init__(
         self,
@@ -192,10 +172,6 @@ class PerformerAttention(_FastAttention):
         self.redraw_interval = feature_redraw_interval
         self.register_buffer("calls_since_last_redraw", torch.tensor(0))
 
-        # Learnable parameters for toroidal twist
-        self.twist_factor_row = nn.Parameter(torch.tensor(1.0))  # Initialize with a value of 1.0
-        self.twist_factor_col = nn.Parameter(torch.tensor(1.0))  # Initialize with a value of 1.0
-
     def forward(self, queries, keys, values, attn_mask, output_attn=False):
         if self.training:
             if self.calls_since_last_redraw >= self.redraw_interval:
@@ -207,30 +183,9 @@ class PerformerAttention(_FastAttention):
         queries = queries.transpose(1, 2)
         keys = keys.transpose(1, 2)
         values = values.transpose(1, 2)
-        scores = super().forward(queries, keys, values)
+        v = super().forward(queries, keys, values)
 
-        # Apply twisted toroidal attention wrap-around with learnable factors
-        scores = self.wrap_attention_scores(scores)
-
-        return scores.transpose(1, 2), None
-
-    def wrap_attention_scores(self, scores):
-        batch_size, num_heads, seq_length, _ = scores.size()
-        wrap_around_scores = scores.clone()
-
-        # Convert learnable factors to integers for roll shifts
-        twist_factor_row = int(self.twist_factor_row.item())
-        twist_factor_col = int(self.twist_factor_col.item())
-
-        # Twisted toroidal wrap-around for rows
-        wrap_around_scores[:, :, 0, :] += scores[:, :, -1, :].roll(shifts=twist_factor_row, dims=-1)
-        wrap_around_scores[:, :, :, 0] += scores[:, :, :, -1].roll(shifts=twist_factor_col, dims=-2)
-
-        # Twisted toroidal wrap-around for columns
-        wrap_around_scores[:, :, :, -1] += scores[:, :, :, 0].roll(shifts=-twist_factor_col, dims=-2)
-        wrap_around_scores[:, :, -1, :] += scores[:, :, 0, :].roll(shifts=-twist_factor_row, dims=-1)
-
-        return wrap_around_scores
+        return v.transpose(1, 2), None
 
 
 class AttentionLayer(nn.Module):
@@ -294,19 +249,18 @@ class AttentionLayer(nn.Module):
 
         out = self.out_projection(out)
         return out, attn
+## End of original code
 
 
-
-
-### Original Code
+# # This is the proposed code that wraps the attention scores around a torus
 # from math import sqrt, log
-
 # import torch
 # import torch.nn as nn
 # import torch.nn.functional as F
 # import numpy as np
 
 # from ..utils.masking import TriangularCausalMask, ProbMask
+# from performer_pytorch import FastAttention as _FastAttention
 
 
 # class FullAttention(nn.Module):
@@ -320,6 +274,10 @@ class AttentionLayer(nn.Module):
 #         self.scale = scale
 #         self.mask_flag = mask_flag
 #         self.dropout = nn.Dropout(attention_dropout)
+
+#         # Learnable parameters for toroidal twist
+#         self.twist_factor_row = nn.Parameter(torch.tensor(1.0))  # Initialize with a value of 1.0
+#         self.twist_factor_col = nn.Parameter(torch.tensor(1.0))  # Initialize with a value of 1.0
 
 #     def forward(self, queries, keys, values, attn_mask, output_attn=False):
 #         B, L, H, E = queries.shape
@@ -335,14 +293,34 @@ class AttentionLayer(nn.Module):
 #             attn_mask = attn_mask.unsqueeze(1)  # expand heads dimension
 #             scores.masked_fill_(attn_mask, -np.inf)
 
+#         # Apply twisted toroidal attention wrap-around with learnable factors
+#         scores = self.wrap_attention_scores(scores)
+
 #         A = torch.nan_to_num(self.dropout(torch.softmax(scale * scores, dim=-1)))
-#         # A = self.dropout(torch.softmax(scale * scores, dim=-1))
 #         V = torch.einsum("bhls,bshd->blhd", A, values)
 
 #         if output_attn:
 #             return (V.contiguous(), A)
 #         else:
 #             return (V.contiguous(), None)
+
+#     def wrap_attention_scores(self, scores):
+#         batch_size, num_heads, seq_length, _ = scores.size()
+#         wrap_around_scores = scores.clone()
+
+#         # Convert learnable factors to integers for roll shifts
+#         twist_factor_row = int(self.twist_factor_row.item())
+#         twist_factor_col = int(self.twist_factor_col.item())
+
+#         # Twisted toroidal wrap-around for rows
+#         wrap_around_scores[:, :, 0, :] += scores[:, :, -1, :].roll(shifts=twist_factor_row, dims=-1)
+#         wrap_around_scores[:, :, :, 0] += scores[:, :, :, -1].roll(shifts=twist_factor_col, dims=-2)
+
+#         # Twisted toroidal wrap-around for columns
+#         wrap_around_scores[:, :, :, -1] += scores[:, :, :, 0].roll(shifts=-twist_factor_col, dims=-2)
+#         wrap_around_scores[:, :, -1, :] += scores[:, :, 0, :].roll(shifts=-twist_factor_row, dims=-1)
+
+#         return wrap_around_scores
 
 
 # class ProbAttention(nn.Module):
@@ -448,9 +426,6 @@ class AttentionLayer(nn.Module):
 #         return context.transpose(2, 1).contiguous(), attn
 
 
-# from performer_pytorch import FastAttention as _FastAttention
-
-
 # class PerformerAttention(_FastAttention):
 #     def __init__(
 #         self,
@@ -472,6 +447,10 @@ class AttentionLayer(nn.Module):
 #         self.redraw_interval = feature_redraw_interval
 #         self.register_buffer("calls_since_last_redraw", torch.tensor(0))
 
+#         # Learnable parameters for toroidal twist
+#         self.twist_factor_row = nn.Parameter(torch.tensor(1.0))  # Initialize with a value of 1.0
+#         self.twist_factor_col = nn.Parameter(torch.tensor(1.0))  # Initialize with a value of 1.0
+
 #     def forward(self, queries, keys, values, attn_mask, output_attn=False):
 #         if self.training:
 #             if self.calls_since_last_redraw >= self.redraw_interval:
@@ -483,9 +462,30 @@ class AttentionLayer(nn.Module):
 #         queries = queries.transpose(1, 2)
 #         keys = keys.transpose(1, 2)
 #         values = values.transpose(1, 2)
-#         v = super().forward(queries, keys, values)
+#         scores = super().forward(queries, keys, values)
 
-#         return v.transpose(1, 2), None
+#         # Apply twisted toroidal attention wrap-around with learnable factors
+#         scores = self.wrap_attention_scores(scores)
+
+#         return scores.transpose(1, 2), None
+
+#     def wrap_attention_scores(self, scores):
+#         batch_size, num_heads, seq_length, _ = scores.size()
+#         wrap_around_scores = scores.clone()
+
+#         # Convert learnable factors to integers for roll shifts
+#         twist_factor_row = int(self.twist_factor_row.item())
+#         twist_factor_col = int(self.twist_factor_col.item())
+
+#         # Twisted toroidal wrap-around for rows
+#         wrap_around_scores[:, :, 0, :] += scores[:, :, -1, :].roll(shifts=twist_factor_row, dims=-1)
+#         wrap_around_scores[:, :, :, 0] += scores[:, :, :, -1].roll(shifts=twist_factor_col, dims=-2)
+
+#         # Twisted toroidal wrap-around for columns
+#         wrap_around_scores[:, :, :, -1] += scores[:, :, :, 0].roll(shifts=-twist_factor_col, dims=-2)
+#         wrap_around_scores[:, :, -1, :] += scores[:, :, 0, :].roll(shifts=-twist_factor_row, dims=-1)
+
+#         return wrap_around_scores
 
 
 # class AttentionLayer(nn.Module):
@@ -549,4 +549,4 @@ class AttentionLayer(nn.Module):
 
 #         out = self.out_projection(out)
 #         return out, attn
-### End of original code
+
