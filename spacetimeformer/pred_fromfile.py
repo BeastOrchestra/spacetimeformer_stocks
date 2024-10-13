@@ -470,7 +470,7 @@ def main(args):
 # 5/25
     # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V60P60_v-0.65-0.36p-0.1-0.24.pth"
 # 10/11
-    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/P_60V68_pr-.14to.17_vr-0.67to.53.pth"
+    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/checkpoint_epoch_0.pth"
     # Load the weights into the model
     # forecaster.load_state_dict(torch.load(output_path))
     forecaster.load_state_dict(torch.load(output_path, map_location=torch.device('cpu')))
