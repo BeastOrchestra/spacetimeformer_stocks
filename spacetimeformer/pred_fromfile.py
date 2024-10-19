@@ -64,10 +64,6 @@ def create_parser():
     parser.add_argument("--use_toroidal_twist", action="store_true", help="Enable toroidal twist attention")
     parser.add_argument("--null_value", type=float, default=None, help="Value to use for null entries")
     parser.add_argument("--pad_value", type=float, default=None, help="Value to use for padding")
-    
-    # Add these new arguments
-    parser.add_argument("--d_model", type=int, default=720, help="Model dimension")
-    parser.add_argument("--d_ff", type=int, default=2880, help="Feedforward dimension")
 
     if len(sys.argv) > 3 and sys.argv[3] == "-h":
         parser.print_help()
@@ -94,9 +90,9 @@ def create_model(config):
         else:
             raise ValueError("Undefined max_seq_len")
         
-        # Use command-line arguments instead of hardcoded values
-        d_model = config.d_model
-        d_ff = config.d_ff
+        # Use command-line arguments for d_model and d_ff
+        d_model = getattr(config, 'd_model', 720)  # Default to 720 if not provided
+        d_ff = getattr(config, 'd_ff', 2880)  # Default to 2880 if not provided
         d_qk = d_model // config.n_heads
         d_v = d_model // config.n_heads
 
@@ -161,7 +157,137 @@ def create_model(config):
         )
     return forecaster
 
-# ... (rest of the code remains the same)
+def formatOutput(tops):
+    a = pd.read_csv('oos_predictions.csv', index_col=0)
+    b = pd.read_csv('./spacetimeformer/data/TixMuSig.csv', index_col=1)
+
+    col = ['Close_'+str(i) for i in range(1,11)]
+    Vcol = ['Volatility_'+str(i) for i in range(1,11)]
+    for i in a.index:
+        a.loc[i][col] = a.loc[i][col]*b.loc[i].closesig + b.loc[i].closemu
+        a.loc[i][Vcol] = a.loc[i][Vcol]*b.loc[i].volsig + b.loc[i].volmu
+
+    current_date = datetime.datetime.now()
+    formatted_date = f"{current_date.month}_{current_date.day}_{current_date.year}"
+    a.to_csv('oos_predictions_'+formatted_date+'.csv')
+
+    a = pd.read_csv('oos_predictions.csv', index_col=0)
+
+    a['Price_PrctDelta'] = a['Close_10']-a['Close_1']
+    a['Volatility_PrctDelta'] = a['Volatility_10']-a['Volatility_1']
+
+    PossibleLongCalls = a[(a['Price_PrctDelta'] > 0) & (a['Volatility_PrctDelta'] > 0)]
+    PossibleLongPuts = a[(a['Price_PrctDelta'] < 0) & (a['Volatility_PrctDelta'] > 0)]
+
+    PossibleLongs = a[(a['Price_PrctDelta'] > 0)]
+    PossibleShorts = a[(a['Price_PrctDelta'] < 0)]
+
+    VolPump = a[(a['Volatility_PrctDelta'] > 0)]
+    VolDump = a[(a['Volatility_PrctDelta'] < 0)]
+
+    Calls=PossibleLongCalls[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=False)
+    Puts=PossibleLongPuts[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=True)
+
+    Longs=PossibleLongs[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=False)
+    Shorts=PossibleShorts[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=True)
+
+    LongVol=VolPump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=False)
+    ShortVol=VolDump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=True)
+    eqThresh = .2
+    print('Long: ',Longs[Longs['Price_PrctDelta'] > eqThresh].Price_PrctDelta[:tops])
+    print('Short: ',Shorts[Shorts['Price_PrctDelta'] < -eqThresh].Price_PrctDelta[:tops])
+    Shorts[Shorts['Price_PrctDelta'] < -eqThresh].Price_PrctDelta[:tops].to_csv('shorts.csv')
+    optThresh = .5
+    print('Long Calls: ', Calls[ (Calls['Price_PrctDelta'] > eqThresh) &(Calls['Volatility_PrctDelta'] > optThresh)].Price_PrctDelta[:tops])
+    print('Long Puts: ',Puts[ (Puts['Price_PrctDelta']< -eqThresh) & (Puts['Volatility_PrctDelta'] > optThresh)].Price_PrctDelta[:tops])
+
+    print('Long Volatility: ',LongVol[LongVol.Volatility_PrctDelta > optThresh].Volatility_PrctDelta[:tops])
+    print('Short Volatility: ',ShortVol[ShortVol.Volatility_PrctDelta < -optThresh].Volatility_PrctDelta[:tops])
+
+def main(args):
+    # Initialization and Setup
+    log_dir = os.getenv("STF_LOG_DIR", "./data/STF_LOG_DIR")
+    args.use_gpu = False
+    device = torch.device("cpu")
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    if args.wandb:
+        import wandb
+        project = os.getenv("STF_WANDB_PROJ")
+        entity = os.getenv("STF_WANDB_ACCT")
+        experiment = wandb.init(project=project, entity=entity, config=args, dir=log_dir, reinit=True)
+        config = wandb.config
+        wandb.run.name = args.run_name
+        wandb.run.save()
+        logger = pl.loggers.WandbLogger(experiment=experiment, save_dir=log_dir)
+
+    # Data Preparation
+    if args.dset == "stocks":
+        print('Making Predictions...')
+        args.null_value = None
+        args.pad_value = None
+        folder='spacetimeformer/data/oos'
+        xt_holder = []
+        for filename in os.listdir(folder):
+            if filename.endswith('.csv'):
+                filepath = os.path.join(folder, filename)
+                dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=filename, context_length=args.context_points)
+                dataloader = DataLoader(dataset, batch_size=1000, shuffle=False)
+                for batch_idx, context in enumerate(dataloader):
+                    x_t = context[:, -args.context_points:, :]
+                    xt_holder.append(x_t[-1,:,:])
+
+        xt_holder = torch.stack(xt_holder, dim=0)
+        print('Eval Dataset Shape: ', xt_holder.shape)
+
+    # Model Training and Evaluation
+    forecaster = create_model(args)
+    forecaster = forecaster.to(device)
+
+    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/HighAccuracy_Oct13th.pth"
+    
+    state_dict = torch.load(output_path, map_location=torch.device('cpu'))
+    forecaster.load_state_dict(state_dict)
+
+    stock_names = [filename[:-4] for filename in os.listdir(folder) if filename.endswith('.csv')]
+
+    print('STOCK NAMED',stock_names)
+    if args.dset == "stocks":
+        forecaster.eval()
+        with torch.no_grad():
+            x_c = xt_holder[:, args.target_points:, :]
+            y_c = xt_holder[:, args.target_points:, [3, 4]]
+            x_t = xt_holder[:, -args.target_points:, :]
+            y_t = xt_holder[:, -args.target_points:, [3, 4]]
+
+            x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
+            model_output = forecaster(x_c, y_c, x_t, y_t)
+            
+            predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+            predictions = predictions.cpu().detach().numpy()
+
+            close_values = predictions[:, :, 0]
+            volatility_values = predictions[:, :, 1]
+
+            close_flattened = close_values.reshape(predictions.shape[0], -1)
+            volatility_flattened = volatility_values.reshape(predictions.shape[0], -1)
+
+            predictions_flattened = np.hstack((close_flattened, volatility_flattened))
+
+            close_columns = [f'Close_{i+1}' for i in range(close_values.shape[1])]
+            volatility_columns = [f'Volatility_{i+1}' for i in range(volatility_values.shape[1])]
+            column_names = close_columns + volatility_columns
+
+            if len(predictions_flattened) == len(stock_names):
+                predictions_df = pd.DataFrame(predictions_flattened, columns=column_names, index=stock_names)
+                predictions_df.to_csv('oos_predictions.csv')
+                formatOutput(tops=5)
+            else:
+                print("Mismatch between the number of predictions and the number of stock names.")
+
+    if args.wandb:
+        wandb.finish()
 
 if __name__ == "__main__":
     parser = create_parser()
