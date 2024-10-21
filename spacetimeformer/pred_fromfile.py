@@ -16,10 +16,6 @@ import pandas as pd
 import numpy as np
 import datetime
 
-# import gdown
-
-
-
 _MODELS = ["spacetimeformer"]
 
 _DSETS = [
@@ -32,7 +28,6 @@ def create_model(config):
         x_dim = 95
         yc_dim = 2 # Can reduce to specific features. i.e you could forecast only 'Close' (yc_dim=1)
         yt_dim = 2
-
 
     assert x_dim is not None
     assert yc_dim is not None
@@ -103,6 +98,7 @@ def create_model(config):
             recon_mask_drop_seq=config.recon_mask_drop_seq,
             recon_mask_drop_standard=config.recon_mask_drop_standard,
             recon_mask_drop_full=config.recon_mask_drop_full,
+            toroid_wrap=config.toroid_wrap,  # Pass the new argument to the model
         )
     return forecaster
 
@@ -130,11 +126,13 @@ def create_parser():
         parser.add_argument("--context_points", type=int, required=True, help="Number of context points")
         parser.add_argument("--target_points", type=int, required=True, help="Number of target points to predict")
         parser.add_argument("--epochs", type=int, required=True, help="Number of training epochs")
-    stf.data.DataModule.add_cli(parser)
+        parser.add_argument("--toroid_wrap", action="store_true", help="Specify whether to apply toroidal wrapping to attention")
 
+    stf.data.DataModule.add_cli(parser)
 
     if model == "spacetimeformer":
         stf.spacetimeformer_model.Spacetimeformer_Forecaster.add_cli(parser)
+
     stf.callbacks.TimeMaskedLossCallback.add_cli(parser)
 
     parser.add_argument("--wandb", action="store_true")
@@ -262,7 +260,6 @@ def create_dset(config):
             PLOT_VAR_NAMES,
             PAD_VAL,
         )
-# data_loader
 
 def create_callbacks(config, save_dir):
     filename = f"{config.run_name}_" + str(uuid.uuid1()).split("-")[0]
@@ -307,115 +304,23 @@ def create_callbacks(config, save_dir):
         )
     return callbacks
 
-# Notes for improving this section. Analysis indicates that the delta of the oos_predictions
-# is proportional to the return on the position. Larger delta implies larger return (pos & neg)
-# Therefore you want to sort based on the "a" dataframe for the largest and smallest changes
-# You will then estimate future ending location by looking at the last value in "a" and correcting w/ mu & sig
+def append_to_csv(y_t, predictions, csv_file='predictions.csv'):
+    # Reshape tensors
+    y_t = y_t.reshape(-1, 2)
+    predictions = predictions.reshape(-1, 2)
+    # Concatenate along the second dimension
+    combined = torch.cat((y_t, predictions), dim=1)
+    # Convert to Pandas DataFrame
+    df = pandas.DataFrame(combined.cpu().numpy(), columns=['y_t_1', 'y_t_2', 'pred_1', 'pred_2'])
+    # Append to CSV
+    df.to_csv(csv_file, mode='a', header=not os.path.exists(csv_file), index=False)
 
-# def formatOutput(tops):  # Original
-#     # Only look at the top X
-#     dir=os.getcwd()
-#     print('current Dir:', dir)
-#     a = pd.read_csv('oos_predictions.csv', index_col=0)
-#     # b = pd.read_csv('TixMuSig.csv',index_col=1)
-#     b = pd.read_csv('./spacetimeformer/data/TixMuSig.csv',index_col=1)
-
-
-#     col = ['Close_'+str(i) for i in range(1,11)]
-#     Vcol = ['Volatility_'+str(i) for i in range(1,11)]
-#     for i in a.index:
-#         a.loc[i][col] = a.loc[i][col]*b.loc[i].closesig + b.loc[i].closemu
-#         a.loc[i][Vcol] = a.loc[i][Vcol]*b.loc[i].volsig + b.loc[i].volmu
-
-#     current_date = datetime.datetime.now()
-#     formatted_date = f"{current_date.month}_{current_date.day}_{current_date.year}"
-#     a.to_csv('oos_predictions_'+formatted_date+'.csv')
-
-#     a['Price_PrctDelta'] = 100*(a['Close_10']-a['Close_1'])/a['Close_1']
-#     a['Volatility_PrctDelta'] = 100*(a['Volatility_10']-a['Volatility_1'])/a['Volatility_1']
-
-#     PossibleLongCalls = a[(a['Price_PrctDelta'] > 0) & (a['Volatility_PrctDelta'] > 0)]
-#     PossibleLongPuts = a[(a['Price_PrctDelta'] < 0) & (a['Volatility_PrctDelta'] > 0)]
-
-#     PossibleLongs = a[(a['Price_PrctDelta'] > 0)]
-#     PossibleShorts = a[(a['Price_PrctDelta'] < 0)]
-
-#     VolPump = a[(a['Volatility_PrctDelta'] > 0)]
-#     VolDump = a[(a['Volatility_PrctDelta'] < 0)]
-
-#     Calls=PossibleLongCalls[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=False)
-#     Puts=PossibleLongPuts[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=True)
-
-#     Longs=PossibleLongs[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=False)
-#     Shorts=PossibleShorts[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=True)
-
-#     LongVol=VolPump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=False)
-#     ShortVol=VolDump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=True)
-
-#     print('Long: ',Longs[Longs['Price_PrctDelta'] > 2].Price_PrctDelta[:tops])
-#     print('Short: ',Shorts[Shorts['Price_PrctDelta'] < -2].Price_PrctDelta[:tops])
-
-#     print('Long Calls: ', Calls[ (Calls['Price_PrctDelta'] > 2) &(Calls['Volatility_PrctDelta'] > 5)].Price_PrctDelta[:tops])
-#     print('Long Puts: ',Puts[ (Puts['Price_PrctDelta']< -2) & (Puts['Volatility_PrctDelta'] > 5)].Price_PrctDelta[:tops])
-
-#     print('Long Volatility: ',LongVol[LongVol.Volatility_PrctDelta > 20].Volatility_PrctDelta[:tops])
-#     print('Short Volatility: ',ShortVol[ShortVol.Volatility_PrctDelta < -20].Volatility_PrctDelta[:tops])
-def formatOutput(tops): # Revised 
-    # Only look at the top X
-
-    a = pd.read_csv('oos_predictions.csv', index_col=0)
-    b = pd.read_csv('./spacetimeformer/data/TixMuSig.csv',index_col=1)
-
-
-    col = ['Close_'+str(i) for i in range(1,11)]
-    Vcol = ['Volatility_'+str(i) for i in range(1,11)]
-    for i in a.index:
-        a.loc[i][col] = a.loc[i][col]*b.loc[i].closesig + b.loc[i].closemu
-        a.loc[i][Vcol] = a.loc[i][Vcol]*b.loc[i].volsig + b.loc[i].volmu
-
-    current_date = datetime.datetime.now()
-    formatted_date = f"{current_date.month}_{current_date.day}_{current_date.year}"
-    a.to_csv('oos_predictions_'+formatted_date+'.csv')
-
-    a = pd.read_csv('oos_predictions.csv', index_col=0) # Use this to rank the predicted move
-
-    a['Price_PrctDelta'] = a['Close_10']-a['Close_1']
-    a['Volatility_PrctDelta'] = a['Volatility_10']-a['Volatility_1']
-# Instead of > | < 0, use specific thresholds that have been identified during returns analysis
-    PossibleLongCalls = a[(a['Price_PrctDelta'] > 0) & (a['Volatility_PrctDelta'] > 0)]
-    PossibleLongPuts = a[(a['Price_PrctDelta'] < 0) & (a['Volatility_PrctDelta'] > 0)]
-
-    PossibleLongs = a[(a['Price_PrctDelta'] > 0)]
-    PossibleShorts = a[(a['Price_PrctDelta'] < 0)]
-
-    VolPump = a[(a['Volatility_PrctDelta'] > 0)]
-    VolDump = a[(a['Volatility_PrctDelta'] < 0)]
-
-    Calls=PossibleLongCalls[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=False)
-    Puts=PossibleLongPuts[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=True)
-
-    Longs=PossibleLongs[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=False)
-    Shorts=PossibleShorts[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Price_PrctDelta',ascending=True)
-
-    LongVol=VolPump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=False)
-    ShortVol=VolDump[['Price_PrctDelta','Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta',ascending=True)
-    eqThresh = .2
-    print('Long: ',Longs[Longs['Price_PrctDelta'] > eqThresh].Price_PrctDelta[:tops])
-    print('Short: ',Shorts[Shorts['Price_PrctDelta'] < -eqThresh].Price_PrctDelta[:tops])
-    Shorts[Shorts['Price_PrctDelta'] < -eqThresh].Price_PrctDelta[:tops].to_csv('shorts.csv')
-    optThresh = .5
-    print('Long Calls: ', Calls[ (Calls['Price_PrctDelta'] > eqThresh) &(Calls['Volatility_PrctDelta'] > optThresh)].Price_PrctDelta[:tops])
-    print('Long Puts: ',Puts[ (Puts['Price_PrctDelta']< -eqThresh) & (Puts['Volatility_PrctDelta'] > optThresh)].Price_PrctDelta[:tops])
-
-    print('Long Volatility: ',LongVol[LongVol.Volatility_PrctDelta > optThresh].Volatility_PrctDelta[:tops])
-    print('Short Volatility: ',ShortVol[ShortVol.Volatility_PrctDelta < -optThresh].Volatility_PrctDelta[:tops])
 
 def main(args):
     # Initialization and Setup
     log_dir = os.getenv("STF_LOG_DIR", "./data/STF_LOG_DIR")
-    args.use_gpu = False
-    device = torch.device("cpu")
-    # device = torch.device("cuda" if torch.cuda.is_available() and args.use_gpu else "cpu")
+    args.use_gpu = True
+    device = torch.device("cuda" if torch.cuda.is_available() and args.use_gpu else "cpu")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
@@ -431,96 +336,115 @@ def main(args):
 
     # Data Preparation
     if args.dset == "stocks":
-        print('Making Predictions...')
         # Custom DataLoader for 'stocks'
         args.null_value = None # NULL_VAL
         args.pad_value = None
-        # oos_loader = DataLoader(TimeSeriesDataset_ContextOnly(data_folder='spacetimeformer/data/oos', 
-        #                                                       context_length=args.context_points, 
-        #                                                       forecast_length=args.target_points),
-        #                                                       batch_size=args.batch_size, 
-        #                                                       shuffle=False, num_workers=4)
-        folder='spacetimeformer/data/oos'
-        xt_holder = []  # Initialize xt_holder as an empty list to hold tensors
-        for filename in os.listdir(folder):
-            if filename.endswith('.csv'):  # Check if the file ends with '.csv'
-                filepath = os.path.join(folder, filename)
-                dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=filename, context_length=args.context_points)
-                dataloader = DataLoader(dataset, batch_size=1000, shuffle=False)
-                for batch_idx, context in enumerate(dataloader):
-                    x_t = context[:, -args.context_points:, :]
-                    xt_holder.append(x_t[-1,:,:])
 
-        # Ensure torch.stack() is called outside the loop, after xt_holder has collected all tensors
-        xt_holder = torch.stack(xt_holder, dim=0)
-        print('Eval Dataset Shape: ', xt_holder.shape)
+        train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points),batch_size=args.batch_size, shuffle=True, num_workers=4)
+        test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False, num_workers=4)
+        oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points),batch_size=args.batch_size, shuffle=False, num_workers=4)
 
     # Model Training and Evaluation
     forecaster = create_model(args)
     forecaster = forecaster.to(device)  # Move the model to the specified device
 
-# Current best
-    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/mar29_2024_p57_v71.pth"
-# 4/22
-    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V75P60_4_25.pth"
-# Wrapped Model
-    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/WrappedAttn_sV_81_LV_86_sp_67_lp_62_Jul9.pth"
-# 5/23 *** Preferred
-    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/72V_61P_5_23_2024.pth"
-# 5/25
-    # output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/V60P60_v-0.65-0.36p-0.1-0.24.pth"
-# 10/13
-    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/HighAccuracy_Oct13th.pth"
-    # Load the weights into the model
-    # forecaster.load_state_dict(torch.load(output_path))
-    forecaster.load_state_dict(torch.load(output_path, map_location=torch.device('cpu')))
-
-    # stock_names = [i[:-4] for i in os.listdir(folder)]  # Extract stock names from filenames
-    stock_names = [filename[:-4] for filename in os.listdir(folder) if filename.endswith('.csv')]# To deal with the .DS_Store file issue
-
-    print('STOCK NAMED',stock_names)
     if args.dset == "stocks":
-        forecaster.eval()
-        with torch.no_grad():
-            x_c = xt_holder[:, args.target_points:, :]
-            y_c = xt_holder[:, args.target_points:, [3, 4]]
-            x_t = xt_holder[:, -args.target_points:, :]  # Assuming x_t is used for prediction
-            y_t = xt_holder[:, -args.target_points:, [3, 4]]
+        # Custom Training Loop for 'stocks'
+        optimizer = torch.optim.Adam(forecaster.parameters(), lr=args.learning_rate)
+        loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
+        for epoch in range(args.epochs):
+            forecaster.train()  # Set the model to training mode
+            total_train_loss = 0
+            for batch_idx, (context, forecast) in enumerate(train_loader):
+                # Unpack  batch into x_c, y_c, x_t, y_t
+                # original
+                x_c = context[:, :-args.target_points, :]  # Context features
+                y_c = context[:, :-args.target_points, [3, 4]]  # Context targets
+                x_t = context[:, -args.target_points:, :]  # Target features
+                y_t = forecast[:, :args.target_points, [3, 4]] # Target targets
 
-            x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
-            model_output = forecaster(x_c, y_c, x_t, y_t)
-            
-            predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-            predictions = predictions.cpu().detach().numpy()  # Move to CPU and convert to numpy
+                # Move data to the appropriate device
+                x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
 
-            # Separate 'close' and 'volatility' values
-            close_values = predictions[:, :, 0]  # Assuming 'close' values are the first in the last dimension
-            volatility_values = predictions[:, :, 1]  # Assuming 'volatility' values are the second
+                optimizer.zero_grad()
+                model_output = forecaster(x_c, y_c, x_t, y_t)
+                # Extract predictions from model output
+                predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+                # Calculate loss
+                loss = loss_function(predictions, y_t)
+                # loss = weighted_mse_loss(predictions, y_t)
+                loss.backward()
+                optimizer.step()
+                total_train_loss += loss.item()
 
-            # Flatten 'close' and 'volatility' arrays
-            close_flattened = close_values.reshape(predictions.shape[0], -1)
-            volatility_flattened = volatility_values.reshape(predictions.shape[0], -1)
+            average_train_loss = total_train_loss / len(train_loader)
 
-            # Concatenate the flattened 'close' and 'volatility' arrays horizontally
-            predictions_flattened = np.hstack((close_flattened, volatility_flattened))
+            # Test Phase
+            forecaster.eval()
+            total_test_loss = 0
+            with torch.no_grad():
+                for context, forecast in test_loader:
+                    # Original Below
+                    x_c = context[:, :-args.target_points, :]
+                    y_c = context[:, :-args.target_points, [3, 4]]
+                    x_t = context[:, -args.target_points:, :]
+                    y_t = forecast[:, :args.target_points, [3, 4]]
 
-            # Create column names for the DataFrame
-            close_columns = [f'Close_{i+1}' for i in range(close_values.shape[1])]
-            volatility_columns = [f'Volatility_{i+1}' for i in range(volatility_values.shape[1])]
-            column_names = close_columns + volatility_columns
+                    x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
+                    
+                    model_output = forecaster(x_c, y_c, x_t, y_t)
+                    predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+                    test_loss = loss_function(predictions, y_t)
+                    # test_loss = weighted_mse_loss(predictions, y_t)
+                    total_test_loss += test_loss.item()
 
-            # Assuming each sample's predictions are now correctly ordered and flattened
-            if len(predictions_flattened) == len(stock_names):
-                # Create the DataFrame with the reshaped predictions
-                predictions_df = pd.DataFrame(predictions_flattened, columns=column_names, index=stock_names)
-                # Save to CSV with stock names as row indices, timestamped
-                predictions_df.to_csv('oos_predictions.csv')
-                formatOutput(tops=5)
-                # current_date = datetime.datetime.now()
-                # formatted_date = f"{current_date.month}_{current_date.day}_{current_date.year}"
-                # predictions_df.to_csv('oos_predictions_'+formatted_date+'.csv')
-            else:
-                print("Mismatch between the number of predictions and the number of stock names.")
+            average_test_loss = total_test_loss / len(test_loader)
+
+            # Out-of-Sample Phase
+            total_oos_loss = 0
+
+            oos_results = []
+
+            # Out-of-Sample Phase
+            total_oos_loss = 0
+            forecaster.eval()
+            with torch.no_grad():
+                for context, forecast in oos_loader:
+                    # Original
+                    x_c = context[:, :-args.target_points, :]
+                    y_c = context[:, :-args.target_points, [3, 4]]
+                    x_t = context[:, -args.target_points:, :]
+                    y_t = forecast[:, :args.target_points, [3, 4]]
+                    x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
+                    
+                    model_output = forecaster(x_c, y_c, x_t, y_t)
+                    predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+
+                    oos_loss = loss_function(predictions, y_t)
+                    total_oos_loss += oos_loss.item()
+
+                    # Store results for each batch
+                    actual = y_t.cpu().numpy()
+                    pred = predictions.cpu().numpy()
+                    oos_results.extend(zip(actual.reshape(-1, 2), pred.reshape(-1, 2)))
+            average_oos_loss = total_oos_loss / len(oos_loader)
+
+            # Save OOS results to CSV at the end of each epoch
+            with open(f'predictions_epoch_{epoch}.csv', 'w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(['Actual_price', 'Actual_volatility', 'Predicted_price', 'Predicted_volatility'])  # Header
+                for actual, predicted in oos_results:
+                    writer.writerow([*actual, *predicted])
+
+            print(f"Epoch {epoch}, "
+                f"Training Loss: {average_train_loss}, "
+                f"Test Loss: {average_test_loss}, "
+                f"Out-of-Sample Loss: {average_oos_loss}")
+
+        # Save a checkpoint after each epoch
+            checkpoint_path = os.path.join(log_dir, f'checkpoint_epoch_{epoch}.pth')
+            torch.save(forecaster.state_dict(), checkpoint_path)
+            print(f"Checkpoint saved to {checkpoint_path}")
 
     # WANDB Experiment Finish (if applicable)
     if args.wandb:
