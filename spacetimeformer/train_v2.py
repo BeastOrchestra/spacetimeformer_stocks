@@ -49,6 +49,7 @@ def create_parser():
         parser.add_argument("--context_points", type=int, required=True, help="Number of context points")
         parser.add_argument("--target_points", type=int, required=True, help="Number of target points to predict")
         parser.add_argument("--epochs", type=int, required=True, help="Number of training epochs")
+        parser.add_argument("--toroid_wrap", action="store_true", help="Specify whether to apply toroidal wrapping to attention")
 
     stf.data.DataModule.add_cli(parser)
 
@@ -155,29 +156,9 @@ def create_model(config):
             recon_mask_drop_seq=config.recon_mask_drop_seq,
             recon_mask_drop_standard=config.recon_mask_drop_standard,
             recon_mask_drop_full=config.recon_mask_drop_full,
+            toroid_wrap=config.toroid_wrap,  # Pass the new argument to the model
         )
     return forecaster
-
-# def weighted_mse_loss(input: Tensor, target: Tensor) -> Tensor:
-#     # ... [previous code] ...
-# this doesnt work in batch
-#     total_weighted_squared_diffs = 0
-#     for i in range(input.shape[1]):
-#         expanded_input, expanded_target = torch.broadcast_tensors(input, target)
-#         n = expanded_input.shape[0]
-#         weights = torch.arange(1, n + 1, dtype=torch.float32, device=expanded_input.device)**2
-#         weights /= weights.sum()
-#         print(weights)
-#         # Reshape weights to make them broadcastable
-#         # Adding a dimension so that weights shape becomes [256, 1]
-#         weights = weights.unsqueeze(1)
-
-#         # Apply weights to squared differences
-#         weighted_squared_diffs = weights * (expanded_input[:,i] - expanded_target[:,i])**2
-#         total_weighted_squared_diffs += weighted_squared_diffs.sum()
-
-#     return total_weighted_squared_diffs / (input.shape[1] * input.shape[0])
-
 
 def create_dset(config):
     INV_SCALER = lambda x: x
@@ -208,7 +189,6 @@ def create_dset(config):
         time_col_name = "Datetime"
         data_path = config.data_path
         time_features = ["year", "month", "day", "weekday", "hour", "minute"]
-
         if config.dset == "stocks":
             config.phase = "train"
             if config.phase == "train":
@@ -268,7 +248,6 @@ def create_dset(config):
         SCALER = dset.apply_scaling
         NULL_VAL = None
     if config.dset =='stocks':
-
         return (
             data_loader,
             INV_SCALER,
@@ -289,48 +268,48 @@ def create_dset(config):
             PAD_VAL,
         )
 
-# def create_callbacks(config, save_dir):
-#     filename = f"{config.run_name}_" + str(uuid.uuid1()).split("-")[0]
-#     model_ckpt_dir = os.path.join(save_dir, filename)
-#     config.model_ckpt_dir = model_ckpt_dir
-#     saving = pl.callbacks.ModelCheckpoint(
-#         dirpath=model_ckpt_dir,
-#         monitor="val/loss",
-#         mode="min",
-#         filename=f"{config.run_name}" + "{epoch:02d}",
-#         save_top_k=1,
-#         auto_insert_metric_name=True,
-#     )
-#     callbacks = [saving]
-#
-#     if not config.no_earlystopping:
-#         callbacks.append(
-#             pl.callbacks.early_stopping.EarlyStopping(
-#                 monitor="val/loss",
-#                 patience=config.patience,
-#             )
-#         )
-#
-#     if config.wandb:
-#         callbacks.append(pl.callbacks.LearningRateMonitor())
-#
-#     if config.model == "lstm":
-#         callbacks.append(
-#             stf.callbacks.TeacherForcingAnnealCallback(
-#                 start=config.teacher_forcing_start,
-#                 end=config.teacher_forcing_end,
-#                 steps=config.teacher_forcing_anneal_steps,
-#             )
-#         )
-#     if config.time_mask_loss:
-#         callbacks.append(
-#             stf.callbacks.TimeMaskedLossCallback(
-#                 start=config.time_mask_start,
-#                 end=config.time_mask_end,
-#                 steps=config.time_mask_anneal_steps,
-#             )
-#         )
-#     return callbacks
+def create_callbacks(config, save_dir):
+    filename = f"{config.run_name}_" + str(uuid.uuid1()).split("-")[0]
+    model_ckpt_dir = os.path.join(save_dir, filename)
+    config.model_ckpt_dir = model_ckpt_dir
+    saving = pl.callbacks.ModelCheckpoint(
+        dirpath=model_ckpt_dir,
+        monitor="val/loss",
+        mode="min",
+        filename=f"{config.run_name}" + "{epoch:02d}",
+        save_top_k=1,
+        auto_insert_metric_name=True,
+    )
+    callbacks = [saving]
+
+    if not config.no_earlystopping:
+        callbacks.append(
+            pl.callbacks.early_stopping.EarlyStopping(
+                monitor="val/loss",
+                patience=config.patience,
+            )
+        )
+
+    if config.wandb:
+        callbacks.append(pl.callbacks.LearningRateMonitor())
+
+    if config.model == "lstm":
+        callbacks.append(
+            stf.callbacks.TeacherForcingAnnealCallback(
+                start=config.teacher_forcing_start,
+                end=config.teacher_forcing_end,
+                steps=config.teacher_forcing_anneal_steps,
+            )
+        )
+    if config.time_mask_loss:
+        callbacks.append(
+            stf.callbacks.TimeMaskedLossCallback(
+                start=config.time_mask_start,
+                end=config.time_mask_end,
+                steps=config.time_mask_anneal_steps,
+            )
+        )
+    return callbacks
 
 def append_to_csv(y_t, predictions, csv_file='predictions.csv'):
     # Reshape tensors
@@ -427,7 +406,6 @@ def main(args):
                     total_test_loss += test_loss.item()
 
             average_test_loss = total_test_loss / len(test_loader)
-            # print(f"Epoch {epoch}, Test Loss: {average_test_loss}")
 
             # Out-of-Sample Phase
             total_oos_loss = 0
@@ -450,7 +428,6 @@ def main(args):
                     predictions = model_output[0] if isinstance(model_output, tuple) else model_output
 
                     oos_loss = loss_function(predictions, y_t)
-                    # oos_loss = weighted_mse_loss(predictions, y_t)
                     total_oos_loss += oos_loss.item()
 
                     # Store results for each batch
@@ -484,12 +461,3 @@ if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
     main(args)
-
-
-# if __name__ == "__main__":
-#     # CLI
-#     parser = create_parser()
-#     args = parser.parse_args()
-
-#     for trial in range(args.trials):
-#         main(args)
