@@ -10,6 +10,7 @@ import torch
 
 import spacetimeformer as stf
 from TimeSeriesDataset_ContextOnly import TimeSeriesDataset_ContextOnly
+from TimeSeriesDataset import TimeSeriesDataset
 from torch.utils.data import DataLoader
 import csv
 import pandas as pd
@@ -195,7 +196,7 @@ def create_dset(config):
             target_cols = ['open', 'high', 'low', 'Close', 'vclose', 'vopen', 'vhigh', 'vlow',
                            'VIX', 'SPY', 'TNX', 'rsi14', 'rsi9', 'rsi24', 'MACD5355macddiff',
                            'MACD5355macddiffslope', 'MACD5355macd', 'MACD5355macdslope',
-                           'MACD5355macdsig', 'MACD5355macdsigslope', 'MACD12269macddiff',
+                           'MACD5355macdsig', 'MACD5355macddiffslope', 'MACD12269macddiff',
                            'MACD12269macddiffslope', 'MACD12269macd', 'MACD12269macdslope',
                            'MACD12269macdsig', 'MACD12269macdsigslope', 'lowTail', 'highTail',
                            'openTail', 'IntradayBar', 'IntradayRange', 'CloseOverSMA5',
@@ -319,8 +320,8 @@ def append_to_csv(y_t, predictions, csv_file='predictions.csv'):
 def main(args):
     # Initialization and Setup
     log_dir = os.getenv("STF_LOG_DIR", "./data/STF_LOG_DIR")
-    args.use_gpu = True
-    device = torch.device("cuda" if torch.cuda.is_available() and args.use_gpu else "cpu")
+    args.use_gpu = False
+    device = torch.device("cpu")
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
@@ -336,117 +337,65 @@ def main(args):
 
     # Data Preparation
     if args.dset == "stocks":
+        print('Making Predictions...')
         # Custom DataLoader for 'stocks'
         args.null_value = None # NULL_VAL
         args.pad_value = None
+        folder='spacetimeformer/data/oos'
+        xt_holder = []  # Initialize xt_holder as an empty list to hold tensors
+        for filename in os.listdir(folder):
+            if filename.endswith('.csv'):  # Check if the file ends with '.csv'
+                filepath = os.path.join(folder, filename)
+                dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=filename, context_length=args.context_points)
+                dataloader = DataLoader(dataset, batch_size=1000, shuffle=False)
+                for batch_idx, context in enumerate(dataloader):
+                    x_t = context[:, -args.context_points:, :]
+                    xt_holder.append(x_t[-1,:,:])
 
-        train_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/train', context_length=args.context_points, forecast_length=args.target_points),batch_size=args.batch_size, shuffle=True, num_workers=4)
-        test_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/test', context_length=args.context_points, forecast_length=args.target_points), batch_size=args.batch_size, shuffle=False, num_workers=4)
-        oos_loader = DataLoader(TimeSeriesDataset(data_folder='spacetimeformer/data/oos', context_length=args.context_points, forecast_length=args.target_points),batch_size=args.batch_size, shuffle=False, num_workers=4)
+        # Ensure torch.stack() is called outside the loop, after xt_holder has collected all tensors
+        xt_holder = torch.stack(xt_holder, dim=0)
+        print('Eval Dataset Shape: ', xt_holder.shape)
 
     # Model Training and Evaluation
     forecaster = create_model(args)
     forecaster = forecaster.to(device)  # Move the model to the specified device
 
+    output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/72V_61P_5_23_2024.pth"  # Use the toroidal wrapped model
+    forecaster.load_state_dict(torch.load(output_path, map_location=torch.device('cpu')))
+
+    stock_names = [filename[:-4] for filename in os.listdir(folder) if filename.endswith('.csv')]
+
+    print('STOCK NAMED', stock_names)
     if args.dset == "stocks":
-        # Custom Training Loop for 'stocks'
-        optimizer = torch.optim.Adam(forecaster.parameters(), lr=args.learning_rate)
-        loss_function = torch.nn.MSELoss()  # Assuming MSE loss for regression
-        for epoch in range(args.epochs):
-            forecaster.train()  # Set the model to training mode
-            total_train_loss = 0
-            for batch_idx, (context, forecast) in enumerate(train_loader):
-                # Unpack  batch into x_c, y_c, x_t, y_t
-                # original
-                x_c = context[:, :-args.target_points, :]  # Context features
-                y_c = context[:, :-args.target_points, [3, 4]]  # Context targets
-                x_t = context[:, -args.target_points:, :]  # Target features
-                y_t = forecast[:, :args.target_points, [3, 4]] # Target targets
+        forecaster.eval()
+        with torch.no_grad():
+            x_c = xt_holder[:, args.target_points:, :]
+            y_c = xt_holder[:, args.target_points:, [3, 4]]
+            x_t = xt_holder[:, -args.target_points:, :]
+            y_t = xt_holder[:, -args.target_points:, [3, 4]]
 
-                # Move data to the appropriate device
-                x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
+            x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
+            model_output = forecaster(x_c, y_c, x_t, y_t)
+            
+            predictions = model_output[0] if isinstance(model_output, tuple) else model_output
+            predictions = predictions.cpu().detach().numpy()
 
-                optimizer.zero_grad()
-                model_output = forecaster(x_c, y_c, x_t, y_t)
-                # Extract predictions from model output
-                predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-                # Calculate loss
-                loss = loss_function(predictions, y_t)
-                # loss = weighted_mse_loss(predictions, y_t)
-                loss.backward()
-                optimizer.step()
-                total_train_loss += loss.item()
+            close_values = predictions[:, :, 0]
+            volatility_values = predictions[:, :, 1]
 
-            average_train_loss = total_train_loss / len(train_loader)
+            close_flattened = close_values.reshape(predictions.shape[0], -1)
+            volatility_flattened = volatility_values.reshape(predictions.shape[0], -1)
 
-            # Test Phase
-            forecaster.eval()
-            total_test_loss = 0
-            with torch.no_grad():
-                for context, forecast in test_loader:
-                    # Original Below
-                    x_c = context[:, :-args.target_points, :]
-                    y_c = context[:, :-args.target_points, [3, 4]]
-                    x_t = context[:, -args.target_points:, :]
-                    y_t = forecast[:, :args.target_points, [3, 4]]
+            predictions_flattened = np.hstack((close_flattened, volatility_flattened))
 
-                    x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
-                    
-                    model_output = forecaster(x_c, y_c, x_t, y_t)
-                    predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-                    test_loss = loss_function(predictions, y_t)
-                    # test_loss = weighted_mse_loss(predictions, y_t)
-                    total_test_loss += test_loss.item()
+            close_columns = [f'Close_{i+1}' for i in range(close_values.shape[1])]
+            volatility_columns = [f'Volatility_{i+1}' for i in range(volatility_values.shape[1])]
+            column_names = close_columns + volatility_columns
 
-            average_test_loss = total_test_loss / len(test_loader)
+            predictions_df = pd.DataFrame(predictions_flattened, columns=column_names, index=stock_names)
+            predictions_df.to_csv('oos_predictions.csv')
+            formatOutput(tops=5)
 
-            # Out-of-Sample Phase
-            total_oos_loss = 0
-
-            oos_results = []
-
-            # Out-of-Sample Phase
-            total_oos_loss = 0
-            forecaster.eval()
-            with torch.no_grad():
-                for context, forecast in oos_loader:
-                    # Original
-                    x_c = context[:, :-args.target_points, :]
-                    y_c = context[:, :-args.target_points, [3, 4]]
-                    x_t = context[:, -args.target_points:, :]
-                    y_t = forecast[:, :args.target_points, [3, 4]]
-                    x_c, y_c, x_t, y_t = x_c.to(device), y_c.to(device), x_t.to(device), y_t.to(device)
-                    
-                    model_output = forecaster(x_c, y_c, x_t, y_t)
-                    predictions = model_output[0] if isinstance(model_output, tuple) else model_output
-
-                    oos_loss = loss_function(predictions, y_t)
-                    total_oos_loss += oos_loss.item()
-
-                    # Store results for each batch
-                    actual = y_t.cpu().numpy()
-                    pred = predictions.cpu().numpy()
-                    oos_results.extend(zip(actual.reshape(-1, 2), pred.reshape(-1, 2)))
-            average_oos_loss = total_oos_loss / len(oos_loader)
-
-            # Save OOS results to CSV at the end of each epoch
-            with open(f'predictions_epoch_{epoch}.csv', 'w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(['Actual_price', 'Actual_volatility', 'Predicted_price', 'Predicted_volatility'])  # Header
-                for actual, predicted in oos_results:
-                    writer.writerow([*actual, *predicted])
-
-            print(f"Epoch {epoch}, "
-                f"Training Loss: {average_train_loss}, "
-                f"Test Loss: {average_test_loss}, "
-                f"Out-of-Sample Loss: {average_oos_loss}")
-
-        # Save a checkpoint after each epoch
-            checkpoint_path = os.path.join(log_dir, f'checkpoint_epoch_{epoch}.pth')
-            torch.save(forecaster.state_dict(), checkpoint_path)
-            print(f"Checkpoint saved to {checkpoint_path}")
-
-    # WANDB Experiment Finish (if applicable)
     if args.wandb:
         wandb.finish()
 
