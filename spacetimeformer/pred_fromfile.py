@@ -313,6 +313,8 @@ def formatOutput(tops):  # Revised
     formatted_date = f"{current_date.month}_{current_date.day}_{current_date.year}"
     a.to_csv('oos_predictions_' + formatted_date + '.csv')
 
+    a = pd.read_csv('oos_predictions.csv', index_col=0) # Use this to rank the predicted move
+
     a['Price_PrctDelta'] = a['Close_10'] - a['Close_1']
     a['Volatility_PrctDelta'] = a['Volatility_10'] - a['Volatility_1']
 
