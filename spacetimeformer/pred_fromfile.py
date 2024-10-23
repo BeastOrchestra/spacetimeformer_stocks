@@ -415,8 +415,8 @@ def main(args):
             predictions = predictions.cpu().detach().numpy()  # Move to CPU and convert to numpy
 
             # Separate 'close' and 'volatility' values
-            close_values = predictions[:, :, 0]  # Assuming 'close' values are the first in the last dimension
-            volatility_values = predictions[:, :, 1]  # Assuming 'volatility' values are the second
+            close_values = predictions[:, :, 0]  #  'close' values are the first in the last dimension
+            volatility_values = predictions[:, :, 1]  #  'volatility' values are the second
 
             # Flatten 'close' and 'volatility' arrays
             close_flattened = close_values.reshape(predictions.shape[0], -1)
