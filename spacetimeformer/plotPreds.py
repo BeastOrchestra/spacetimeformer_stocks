@@ -12,11 +12,10 @@ def load_data(stock_name):
         raise FileNotFoundError(f"No data found for {stock_name} in the specified path.")
 
 def load_predictions():
-    # Load predictions from the latest oos_predictions file
-    predictions_files = [f for f in os.listdir() if f.startswith('oos_predictions_') and f.endswith('.csv')]
-    if predictions_files:
-        latest_file = max(predictions_files, key=os.path.getctime)
-        predictions = pd.read_csv(latest_file, index_col=0)
+    # Load predictions from the specified oos_predictions file
+    predictions_path = '/Users/alecjeffery/Documents/Playgrounds/Python/spacetimeformer_stocks/oos_predictions.csv'
+    if os.path.exists(predictions_path):
+        predictions = pd.read_csv(predictions_path)
         return predictions
     else:
         raise FileNotFoundError("No predictions file found.")
@@ -25,13 +24,19 @@ def plot_stock_and_predictions(stock_data, predictions, stock_name):
     plt.figure(figsize=(14, 7))
     
     # Plot recent stock history
-    plt.plot(stock_data['Datetime'], stock_data['Close'], label='Actual Close Price', color='blue')
+    plt.plot(stock_data['Close'], label='Actual Close Price', color='blue')
+    
+    # Extract the projected values
+    projected_values = predictions[['Close_1', 'Close_2', 'Close_3', 'Close_4', 'Close_5', 'Close_6', 'Close_7', 'Close_8', 'Close_9', 'Close_10']].values.flatten()
+    
+    # Create an index for the projected values
+    projection_index = range(len(stock_data), len(stock_data) + len(projected_values))
     
     # Plot predictions
-    plt.plot(predictions.index, predictions['Close_10'], label='Predicted Close Price', color='orange', linestyle='--')
+    plt.plot(projection_index, projected_values, label='Predicted Close Price', color='yellow', linestyle='--')
     
     plt.title(f'Stock Price and Predictions for {stock_name}')
-    plt.xlabel('Date')
+    plt.xlabel('Days')
     plt.ylabel('Price')
     plt.legend()
     plt.xticks(rotation=45)
@@ -42,21 +47,9 @@ def main(stock_name):
     stock_data = load_data(stock_name)
     predictions = load_predictions()
     
-    # Calculate Price and Volatility deltas
-    predictions['Price_PrctDelta'] = predictions['Close_10'] - predictions['Close_1']
-    predictions['Volatility_PrctDelta'] = predictions['Volatility_10'] - predictions['Volatility_1']
-    
-    # Filter opportunities
-    PossibleLongCalls = predictions[(predictions['Price_PrctDelta'] > 0) & (predictions['Volatility_PrctDelta'] > 0)]
-    PossibleLongPuts = predictions[(predictions['Price_PrctDelta'] < 0) & (predictions['Volatility_PrctDelta'] > 0)]
-    
-    # Print opportunities
-    print('Possible Long Calls:', PossibleLongCalls)
-    print('Possible Long Puts:', PossibleLongPuts)
-    
     # Plot the stock data and predictions
     plot_stock_and_predictions(stock_data, predictions, stock_name)
 
 if __name__ == "__main__":
-    stock_name = input("Enter the stock name (without .csv): ")
+    stock_name = 'ADBE'  # Hardcoding ADBE as per the user's request
     main(stock_name)
