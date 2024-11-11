@@ -393,7 +393,7 @@ def main(args):
     # Check for MODEL_PATH in environment variables
     if 'MODEL_PATH' in os.environ:
         output_path = os.environ['MODEL_PATH']
-    else:
+    else:  # Default Model
         output_path = "/Users/alecjeffery/Documents/Playgrounds/Python/largeModels/HighAccuracy_Oct13th.pth"  # Default path
 
     # Load the weights into the model
