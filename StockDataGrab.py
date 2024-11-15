@@ -55,7 +55,7 @@ class Stock42():
         self.InputLength = 252
         self.bins = 10 # Also a default for histogram
         self.extraBins = 10
-        self.lookback = [252] # [22, 65, 130, 22*9, 252] # M, Q, H, 3/4Y, Y
+        self.lookback = 65 # [22, 65, 130, 22*9, 252] # M, Q, H, 3/4Y, Y
         # self.ul = 31.437988662719725
         # self.ll = -9.06309299468994
         self.maxPositions=1 # Should be set as a global parameter
@@ -329,8 +329,8 @@ class Stock42():
                     # should have two classes. 1 for all non-target features that is normal scaled
                     # the other that has the target variables that are not scaled or min/max scaled.
                     feat = self.AllData.columns[f]
-                    rollmu = self.AllData[feat].rolling(252).mean()
-                    rollstd = self.AllData[feat].rolling(252).std()
+                    rollmu = self.AllData[feat].rolling(self.lookback).mean()
+                    rollstd = self.AllData[feat].rolling(self.lookback).std()
                     self.AllData[feat]=(self.AllData[feat]-rollmu)/rollstd
                     if feat == 'Close':
                         closemu = rollmu
