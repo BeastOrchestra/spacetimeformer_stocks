@@ -3,8 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import mpld3
 
+# List to store HTML content of each plot
+html_plots = []
+
 # Function to plot stock data based on a specified ticker and its category
 def plot_stock_predictions(ticker, position_category):
+    global html_plots
+
     # Load predictions data
     predictions_path = '/Users/alecjeffery/Documents/Playgrounds/Python/spacetimeformer_stocks/oos_predictions.csv'
     df1 = pd.read_csv(predictions_path)
@@ -46,7 +51,7 @@ def plot_stock_predictions(ticker, position_category):
     prediction_days = range(len(close_values), len(close_values) + len(predicted_close_values))
 
     # Plotting
-    fig, axs = plt.subplots(2, 1, figsize=(10, 8))
+    fig, axs = plt.subplots(2, 1, figsize=(6.5, 8)) # originally (10,8)
 
     # Plot Close prices
     axs[0].plot(days, close_values, label=f'{ticker} Close Prices', color='blue')
@@ -67,22 +72,25 @@ def plot_stock_predictions(ticker, position_category):
 
     plt.tight_layout()
 
-    # Save the plot as an HTML file using mpld3
-    output_path = f'plots/{ticker}_{position_category}.html'
+    # Convert the plot to HTML using mpld3
     html_str = mpld3.fig_to_html(fig)
-    with open(output_path, 'w') as file:
-        file.write(html_str)
+    html_plots.append(html_str)
+    print(f"Added plot for {ticker} with position '{position_category}' to the combined HTML content.")
 
-    print(f"Saved interactive plot for {ticker} with position '{position_category}' to {output_path}")
+# Function to save all plots into a single HTML file
+def save_combined_html(output_file):
+    with open(output_file, 'w') as file:
+        file.write("<html><head><title>Stock Predictions</title></head><body>\n")
+        for html_str in html_plots:
+            file.write(html_str)
+            file.write("<hr>\n")  # Separator between plots
+        file.write("</body></html>")
+    print(f"Saved all plots to {output_file}")
 
 # Function to read tickers.txt and plot for each ticker
 def process_tickers_file(tickers_file):
-    if not os.path.exists("plots"):
-        os.makedirs("plots")
-
     with open(tickers_file, 'r') as file:
         for line in file:
-            # Split the line into ticker and position category
             ticker, position_category = line.strip().split(',')
             ticker = ticker.upper()
             position_category = position_category.lower()
@@ -91,4 +99,6 @@ def process_tickers_file(tickers_file):
 # Main function
 if __name__ == "__main__":
     tickers_file = "tickers.txt"
+    output_file = "all_plots.html"
     process_tickers_file(tickers_file)
+    save_combined_html(output_file)
