@@ -1,10 +1,10 @@
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
-import argparse
+import mpld3
 
-# Function to plot stock data based on a specified ticker
-def plot_stock_predictions(ticker):
+# Function to plot stock data based on a specified ticker and its category
+def plot_stock_predictions(ticker, position_category):
     # Load predictions data
     predictions_path = '/Users/alecjeffery/Documents/Playgrounds/Python/spacetimeformer_stocks/oos_predictions.csv'
     df1 = pd.read_csv(predictions_path)
@@ -42,8 +42,8 @@ def plot_stock_predictions(ticker):
         return
 
     # Create an index for the x-axis
-    days = range(len(close_values))  # Index for Close prices
-    prediction_days = range(len(close_values), len(close_values) + len(predicted_close_values))  # Index for predictions
+    days = range(len(close_values))
+    prediction_days = range(len(close_values), len(close_values) + len(predicted_close_values))
 
     # Plotting
     fig, axs = plt.subplots(2, 1, figsize=(10, 8))
@@ -51,7 +51,7 @@ def plot_stock_predictions(ticker):
     # Plot Close prices
     axs[0].plot(days, close_values, label=f'{ticker} Close Prices', color='blue')
     axs[0].plot(prediction_days, predicted_close_values, label='Predicted Close Prices', color='red', linestyle='--')
-    axs[0].set_title(f'{ticker} Close Prices and Predictions\nFinal Close Prediction: ${final_close_10:.2f}', fontsize=12)
+    axs[0].set_title(f'{ticker} Close Prices and Predictions\nFinal Close Prediction: ${final_close_10:.2f}\nPosition: {position_category}')
     axs[0].set_ylabel('Price ($)')
     axs[0].grid(axis='y')
     axs[0].legend()
@@ -59,19 +59,36 @@ def plot_stock_predictions(ticker):
     # Plot v_close (volatility)
     axs[1].plot(days, v_close_values, label=f'{ticker} Volatility (IV)', color='blue')
     axs[1].plot(prediction_days, predicted_volatility_values, label='Predicted Volatility (IV)', color='red', linestyle='--')
-    axs[1].set_title(f'{ticker} Volatility and Predictions\nFinal Volatility Prediction: {100 * final_volatility_10:.2f}%', fontsize=12)
+    axs[1].set_title(f'{ticker} Volatility and Predictions\nFinal Volatility Prediction: {100 * final_volatility_10:.2f}%\nPosition: {position_category}')
     axs[1].set_xlabel('Days')
     axs[1].set_ylabel('Volatility (%)')
     axs[1].grid(axis='y')
     axs[1].legend()
 
     plt.tight_layout()
-    plt.show()
 
-# Set up argparse for CLI input
+    # Save the plot as an HTML file using mpld3
+    output_path = f'plots/{ticker}_{position_category}.html'
+    html_str = mpld3.fig_to_html(fig)
+    with open(output_path, 'w') as file:
+        file.write(html_str)
+
+    print(f"Saved interactive plot for {ticker} with position '{position_category}' to {output_path}")
+
+# Function to read tickers.txt and plot for each ticker
+def process_tickers_file(tickers_file):
+    if not os.path.exists("plots"):
+        os.makedirs("plots")
+
+    with open(tickers_file, 'r') as file:
+        for line in file:
+            # Split the line into ticker and position category
+            ticker, position_category = line.strip().split(',')
+            ticker = ticker.upper()
+            position_category = position_category.lower()
+            plot_stock_predictions(ticker, position_category)
+
+# Main function
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Plot stock predictions for a specified ticker symbol.")
-    parser.add_argument("--ticker", type=str, required=True, help="Ticker symbol of the stock (e.g., ADBE)")
-
-    args = parser.parse_args()
-    plot_stock_predictions(args.ticker.upper())
+    tickers_file = "tickers.txt"
+    process_tickers_file(tickers_file)

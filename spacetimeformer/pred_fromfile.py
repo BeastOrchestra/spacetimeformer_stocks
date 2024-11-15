@@ -336,16 +336,53 @@ def formatOutput(tops):  # Revised
     LongVol = VolPump[['Price_PrctDelta', 'Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta', ascending=False)
     ShortVol = VolDump[['Price_PrctDelta', 'Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta', ascending=True)
 
-    eqThresh = .2
-    print('Long: ', Longs[Longs['Price_PrctDelta'] > eqThresh].Price_PrctDelta[:tops])
-    print('Short: ', Shorts[Shorts['Price_PrctDelta'] < -eqThresh].Price_PrctDelta[:tops])
-    Shorts[Shorts['Price_PrctDelta'] < -eqThresh].Price_PrctDelta[:tops].to_csv('shorts.csv')
-    optThresh = .5
-    print('Long Calls: ', Calls[(Calls['Price_PrctDelta'] > eqThresh) & (Calls['Volatility_PrctDelta'] > optThresh)].Price_PrctDelta[:tops])
-    print('Long Puts: ', Puts[(Puts['Price_PrctDelta'] < -eqThresh) & (Puts['Volatility_PrctDelta'] > optThresh)].Price_PrctDelta[:tops])
+    # Generate tickers.txt file based on filtered data
+    generate_tickers_file(Longs, Shorts, LongVol, ShortVol, tops=5, eqThresh=0.2, optThresh=0.5)
+###
+    # eqThresh = .2
+    # print('Long: ', Longs[Longs['Price_PrctDelta'] > eqThresh].Price_PrctDelta[:tops])
+    # print('Short: ', Shorts[Shorts['Price_PrctDelta'] < -eqThresh].Price_PrctDelta[:tops])
+    # Shorts[Shorts['Price_PrctDelta'] < -eqThresh].Price_PrctDelta[:tops].to_csv('shorts.csv')
+    # optThresh = .5
+    # print('Long Calls: ', Calls[(Calls['Price_PrctDelta'] > eqThresh) & (Calls['Volatility_PrctDelta'] > optThresh)].Price_PrctDelta[:tops])
+    # print('Long Puts: ', Puts[(Puts['Price_PrctDelta'] < -eqThresh) & (Puts['Volatility_PrctDelta'] > optThresh)].Price_PrctDelta[:tops])
 
-    print('Long Volatility: ', LongVol[LongVol.Volatility_PrctDelta > optThresh].Volatility_PrctDelta[:tops])
-    print('Short Volatility: ', ShortVol[ShortVol.Volatility_PrctDelta < -optThresh].Volatility_PrctDelta[:tops])
+    # print('Long Volatility: ', LongVol[LongVol.Volatility_PrctDelta > optThresh].Volatility_PrctDelta[:tops])
+    # print('Short Volatility: ', ShortVol[ShortVol.Volatility_PrctDelta < -optThresh].Volatility_PrctDelta[:tops])
+###
+# Function to generate the tickers.txt file
+def generate_tickers_file(Longs, Shorts, LongVol, ShortVol, tops, eqThresh, optThresh):
+    # Create a list to store the categorized tickers
+    tickers_list = []
+
+    # Longs
+    long_tickers = Longs[Longs['Price_PrctDelta'] > eqThresh].index[:tops]
+    print('Long: ', long_tickers)
+    tickers_list.extend([f"{ticker},long" for ticker in long_tickers])
+
+    # Shorts
+    short_tickers = Shorts[Shorts['Price_PrctDelta'] < -eqThresh].index[:tops]
+    print('Short: ', short_tickers)
+    tickers_list.extend([f"{ticker},short" for ticker in short_tickers])
+
+    # Long Volatility
+    long_vol_tickers = LongVol[LongVol.Volatility_PrctDelta > optThresh].index[:tops]
+    print('Long Volatility: ', long_vol_tickers)
+    tickers_list.extend([f"{ticker},long_volatility" for ticker in long_vol_tickers])
+
+    # Short Volatility
+    short_vol_tickers = ShortVol[ShortVol.Volatility_PrctDelta < -optThresh].index[:tops]
+    print('Short Volatility: ', short_vol_tickers)
+    tickers_list.extend([f"{ticker},short_volatility" for ticker in short_vol_tickers])
+
+    # Write the categorized tickers to tickers.txt
+    with open("tickers.txt", "w") as file:
+        for ticker in tickers_list:
+            file.write(f"{ticker}\n")
+
+    print("Tickers file 'tickers.txt' has been generated successfully.")
+
+
 
 def main(args):
     # Initialization and Setup
@@ -401,7 +438,7 @@ def main(args):
 
     stock_names = [filename[:-4] for filename in os.listdir(folder) if filename.endswith('.csv')]  # To deal with the .DS_Store file issue
 
-    print('STOCK NAMED', stock_names)
+    # print('STOCK NAMED', stock_names)
     if args.dset == "stocks":
         forecaster.eval()
         with torch.no_grad():
