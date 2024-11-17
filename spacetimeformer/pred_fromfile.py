@@ -312,7 +312,7 @@ def formatOutput(tops):  # Revised
     current_date = datetime.datetime.now()
     formatted_date = f"{current_date.month}_{current_date.day}_{current_date.year}"
     a.to_csv('oos_predictions_' + formatted_date + '.csv')
-
+    a.to_csv('oos_predictions_current.csv')  # To be used when visualizing with IB api
     a = pd.read_csv('oos_predictions.csv', index_col=0) # The subsequent operations need to be on the scaled data
 
     a['Price_PrctDelta'] = a['Close_10'] - a['Close_1']
