@@ -29,7 +29,7 @@ def get_historical_data_with_volatility(ticker):
         contract,
         endDateTime='',
         barSizeSetting='1 day',
-        durationStr='1 Y',
+        durationStr='6 M',
         whatToShow='ADJUSTED_LAST',
         useRTH=True
     )
@@ -41,7 +41,7 @@ def get_historical_data_with_volatility(ticker):
         contract,
         endDateTime='',
         barSizeSetting='1 day',
-        durationStr='1 Y',
+        durationStr='6 M',
         whatToShow='OPTION_IMPLIED_VOLATILITY',
         useRTH=True
     )
@@ -56,7 +56,11 @@ def get_historical_data_with_volatility(ticker):
     merged_df = merged_df.drop(columns=['average', 'barCount'], errors='ignore')
     return merged_df
 
-# Function to plot stock data with candlestick chart and line plot for volatility
+# Function to calculate percentage change
+def calculate_percentage_change(current, forecast):
+    return ((forecast / current) - 1) * 100 if current != 0 else 0
+
+# Updated function to plot stock data with candlestick chart and line plot for volatility
 def plot_stock_predictions(ticker, position_category, actual_data, predicted_data):
     global html_plots
 
@@ -77,8 +81,16 @@ def plot_stock_predictions(ticker, position_category, actual_data, predicted_dat
 
     prediction_dates = pd.date_range(start=ohlc_data.index[-1], periods=11, freq=BDay())[1:]  # 10 business days
 
-    # Extract actual volatility values
-    volatility_values = actual_data['vclose'].fillna(-1).values
+    # Extract the final predicted values
+    final_close_10 = predicted_data['Close_10'].values[0]
+    final_volatility_10 = predicted_data['Volatility_10'].values[0]
+
+    # Calculate percentage changes
+    last_actual_close = actual_data['close'].iloc[-1]
+    last_actual_volatility = actual_data['vclose'].iloc[-1]
+
+    close_pct_change = calculate_percentage_change(last_actual_close, final_close_10)
+    volatility_pct_change = calculate_percentage_change(last_actual_volatility, final_volatility_10)
 
     # Create figure for candlestick and line plots
     fig, axs = plt.subplots(2, 1, figsize=(7, 12))
@@ -96,15 +108,21 @@ def plot_stock_predictions(ticker, position_category, actual_data, predicted_dat
         show_nontrading=True
     )
     axs[0].plot(prediction_dates, predicted_close_values, color='red', linestyle='--', label='Predicted Close Prices')
-    axs[0].set_title(f'{ticker} Daily Close & Forecast\nPosition: {position_category.upper()}', fontdict=fontdict)
+    axs[0].set_title(
+        f'{ticker} Close Prices & Forecast: ${final_close_10:.2f} [{close_pct_change:.2f}%]\nPosition: {position_category.upper()}',
+        fontdict=fontdict
+    )
     axs[0].legend()
     axs[0].grid()
 
     # Plot line chart for implied volatility
     actual_dates = pd.to_datetime(actual_data.index)
-    axs[1].plot(actual_dates, volatility_values, label=f'{ticker} Volatility (IV)', color='blue')
+    axs[1].plot(actual_dates, actual_data['vclose'], label=f'{ticker} Volatility (IV)', color='blue')
     axs[1].plot(prediction_dates, predicted_volatility_values, label='Predicted Volatility (IV)', color='red', linestyle='--')
-    axs[1].set_title(f'{ticker} Implied Volatility & Forecast', fontdict=fontdict)
+    axs[1].set_title(
+        f'{ticker} Volatility & Forecast: {final_volatility_10:.2f}% [{volatility_pct_change:.2f}%]\nPosition: {position_category.upper()}',
+        fontdict=fontdict
+    )
     axs[1].set_xlabel('Date', fontsize=12)
     axs[1].set_ylabel('Volatility (%)', fontsize=16)
     axs[1].tick_params(axis='x', rotation=45)
@@ -117,6 +135,7 @@ def plot_stock_predictions(ticker, position_category, actual_data, predicted_dat
     html_str = mpld3.fig_to_html(fig)
     html_plots.append(html_str)
     print(f"Added candlestick and volatility line plot for {ticker} with position '{position_category}'.")
+
 
 # Function to save all plots into a single HTML file
 def save_combined_html(output_file):
