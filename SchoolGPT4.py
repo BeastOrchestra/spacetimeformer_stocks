@@ -108,7 +108,7 @@ def generate_mplchart(ticker, data):
         Volume(),
         SMA(50),
         SMA(200),
-        RSI(9),
+        # RSI(9),
         RSI(14),
         MACD(12,26,9),
         MACD(5, 13, 8)
