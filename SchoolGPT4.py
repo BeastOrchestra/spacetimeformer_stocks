@@ -27,7 +27,7 @@ def get_historical_data(ticker):
         contract,
         endDateTime='',
         barSizeSetting='1 day',
-        durationStr='6 M',
+        durationStr='12 M',
         whatToShow='ADJUSTED_LAST',
         useRTH=True
     )
@@ -39,7 +39,7 @@ def get_historical_data(ticker):
             contract,
             endDateTime='',
             barSizeSetting='1 day',
-            durationStr='6 M',
+            durationStr='12 M',
             whatToShow='OPTION_IMPLIED_VOLATILITY',
             useRTH=True
         )
@@ -110,7 +110,8 @@ def generate_mplchart(ticker, data):
         SMA(200),
         RSI(9),
         RSI(14),
-        MACD(),
+        MACD(12,26,9),
+        MACD(5, 13, 8)
     ]
     chart = Chart(title=ticker, max_bars=250)
     chart.plot(data, indicators)
