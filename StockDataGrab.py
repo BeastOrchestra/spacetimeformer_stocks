@@ -27,15 +27,16 @@ import pickle
 class Stock42():
     def __init__(self):
         # self.modName = '600x68a7sh-2.45S10.42L'
-        self.tix = ['AAPL','GOOG','TSLA','NFLX','DHR',
-            'MMM','PFE','AMZN','AMD','ABEV',
-            'NVDA','BAC','JPM','INTC','XOM',
-            'MSFT','C','CRM','BA','UNH',
-            'WMT','CVS','JNJ','V','LLY',  # This is the end of the original training set
-            'BRK B','AVGO','PG','MA','MRK',
-            'HD','CVX','PEP','MCD','CSCO',
-            'COST','TMO','ADBE','DIS','WFC',
-            'KR','MCK','T','CIG','CAH',
+        self.tix = [
+            # 'AAPL','GOOG','TSLA','NFLX','DHR',
+            # 'MMM','PFE','AMZN','AMD','ABEV',
+            # 'NVDA','BAC','JPM','INTC','XOM',
+            # 'MSFT','C','CRM','BA','UNH',
+            # 'WMT','CVS','JNJ','V','LLY',  # This is the end of the original training set
+            # 'BRK B','AVGO','PG','MA','MRK',
+            # 'HD','CVX','PEP','MCD','CSCO',
+            # 'COST','TMO','ADBE','DIS','WFC',
+            # 'KR','MCK','T','CIG','CAH',
             'ELV','MRO','WBA','VZ','PSX',
             'UPS','DELL','LOW','ADM',
             'GE','IBM','MET','PRU','RTX',
@@ -246,6 +247,12 @@ class Stock42():
             useRTH=True,
             )
         AllData = util.df(self.historical_data)
+
+        # Error handling for Blank Data 
+        if AllData.empty:
+            print(f"Data for {symbol} is empty.")
+            return  # Safely exit if data is empty
+
         AllData=AllData.set_index(AllData['date'],drop=True)
         # Volatility
         IV_historical_data = self.ib.reqHistoricalData(
