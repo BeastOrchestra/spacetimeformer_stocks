@@ -37,7 +37,7 @@ class Stock42():
             # 'HD','CVX','PEP','MCD','CSCO',
             # 'COST','TMO','ADBE','DIS','WFC',
             # 'KR','MCK','T','CIG','CAH',
-            'ELV','MRO','WBA','VZ','PSX',
+            'ELV','WBA','VZ','PSX',  # got rid of MRO, it changed exchanges and no longer
             'UPS','DELL','LOW','ADM',
             'GE','IBM','MET','PRU','RTX',
             'HUM','COR','VLO','CNC','TJX',
@@ -234,43 +234,83 @@ class Stock42():
         self.AllData = AllData
         return
 
-    def getDat(self,symbol):
-        contract = Stock(symbol, 'SMART', 'USD')
-        self.ib.qualifyContracts(contract)
-        # Hist OLHCV data
-        self.historical_data = self.ib.reqHistoricalData(
-            contract, 
-            endDateTime='',
-            barSizeSetting='1 day', 
-            durationStr=self.trainDuration, 
-            whatToShow='ADJUSTED_LAST',
-            useRTH=True,
-            )
-        AllData = util.df(self.historical_data)
+    def getDat(self, symbol):
+        try:
+            # Dynamically set exchange if needed (example for MRO)
+            exchange = 'VALUE' if symbol == 'MRO' else 'SMART'
+            contract = Stock(symbol, exchange, 'USD')
 
-        # Error handling for Blank Data 
-        if AllData.empty:
-            print(f"Data for {symbol} is empty.")
-            return  # Safely exit if data is empty
+            # Qualify the contract
+            self.ib.qualifyContracts(contract)
 
-        AllData=AllData.set_index(AllData['date'],drop=True)
-        # Volatility
-        IV_historical_data = self.ib.reqHistoricalData(
-            contract, 
-            endDateTime='',
-            barSizeSetting='1 day', 
-            durationStr=self.trainDuration, 
-            whatToShow='OPTION_IMPLIED_VOLATILITY',
-            useRTH=True,
+            # Request historical data
+            self.historical_data = self.ib.reqHistoricalData(
+                contract,
+                endDateTime='',
+                barSizeSetting='1 day',
+                durationStr=self.trainDuration,
+                whatToShow='ADJUSTED_LAST',
+                useRTH=True,
             )
-        AD_IV = util.df(IV_historical_data)
-        AD_IV=AD_IV.set_index(AD_IV['date'], drop=True)
-        AD_IV=AD_IV.drop(columns=['barCount','volume'])
-        AD_IV=AD_IV.rename(columns={'open':'vopen','high':'vhigh','low':'vlow','close':'vclose','average':'vaverage'})
-        AllData[['vclose','vopen','vhigh','vlow','vaverage']] = AD_IV[['vclose','vopen','vhigh','vlow','vaverage']]
-        AllData=AllData.drop(columns=['date','barCount','vaverage','average']) # Drop average and vaverage because these are not accessible in live data
-        self.AllData = AllData
+
+            # Convert to DataFrame
+            if not self.historical_data:
+                print(f"No historical data returned for {symbol} on exchange {exchange}.")
+                return
+            AllData = util.df(self.historical_data)
+
+            # Error handling for empty data
+            if AllData is None or AllData.empty:
+                print(f"Data for {symbol} on exchange {exchange} is empty.")
+                return
+
+            # Set index and proceed
+            AllData = AllData.set_index(AllData['date'], drop=True)
+
+            # Volatility data
+            IV_historical_data = self.ib.reqHistoricalData(
+                contract,
+                endDateTime='',
+                barSizeSetting='1 day',
+                durationStr=self.trainDuration,
+                whatToShow='OPTION_IMPLIED_VOLATILITY',
+                useRTH=True,
+            )
+
+            if not IV_historical_data:
+                print(f"No implied volatility data for {symbol} on exchange {exchange}.")
+                AD_IV = pd.DataFrame()  # Create an empty DataFrame for missing volatility data
+            else:
+                AD_IV = util.df(IV_historical_data)
+                if not AD_IV.empty:
+                    AD_IV = AD_IV.set_index(AD_IV['date'], drop=True)
+                    AD_IV = AD_IV.drop(columns=['barCount', 'volume'])
+                    AD_IV = AD_IV.rename(columns={
+                        'open': 'vopen', 'high': 'vhigh', 'low': 'vlow',
+                        'close': 'vclose', 'average': 'vaverage'
+                    })
+                else:
+                    print(f"Implied volatility data for {symbol} is empty.")
+                    AD_IV = pd.DataFrame()
+
+            # Merge volatility data if available
+            if not AD_IV.empty:
+                AllData[['vclose', 'vopen', 'vhigh', 'vlow']] = AD_IV[['vclose', 'vopen', 'vhigh', 'vlow']]
+
+            # Drop unnecessary columns
+            AllData = AllData.drop(columns=['date', 'barCount'], errors='ignore')
+
+            # Set final data
+            self.AllData = AllData
+            print(f"Data for {symbol} successfully processed.")
+
+        except AttributeError as e:
+            print(f"AttributeError while processing {symbol}: {e}")
+        except Exception as e:
+            print(f"Unexpected error while processing {symbol}: {e}")
+
         return
+
     
     def GetLastTick(self,ticker):
         # contract = Stock('AAPL', 'SMART', 'USD')
