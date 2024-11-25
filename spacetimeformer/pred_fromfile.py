@@ -419,7 +419,7 @@ def main(args):
                 for batch_idx, context in enumerate(dataloader):
                     x_t = context[:, -args.context_points:, :]
                     xt_holder.append(x_t[-1, :, :])
-                    print(f"Shape of added tensor: {xt_holder[-1].shape}")
+                    # print(f"Shape of added tensor: {xt_holder[-1].shape}")
 
         # Ensure torch.stack() is called outside the loop, after xt_holder has collected all tensors
         xt_holder = torch.stack(xt_holder, dim=0)
