@@ -27,7 +27,7 @@ def get_historical_data(ticker):
         contract,
         endDateTime='',
         barSizeSetting='1 day',
-        durationStr='12 M',
+        durationStr='2 Y',
         whatToShow='ADJUSTED_LAST',
         useRTH=True
     )
@@ -39,7 +39,7 @@ def get_historical_data(ticker):
             contract,
             endDateTime='',
             barSizeSetting='1 day',
-            durationStr='12 M',
+            durationStr='2 Y',
             whatToShow='OPTION_IMPLIED_VOLATILITY',
             useRTH=True
         )
@@ -79,8 +79,8 @@ def plot_historical_with_predictions(ticker, position_category, actual_data, pre
     fig, axs = plt.subplots(2, 1, figsize=(10, 6))
     fontdict = {'fontsize': 12}
 
-    axs[0].plot(actual_data.index, actual_data['close'], label='Historical Prices', color='blue')
-    axs[0].plot(prediction_dates, predicted_close_values, label='Predicted Prices', color='red', linestyle='--')
+    axs[0].plot(actual_data.index[-252:], actual_data['close'][-252:], label='Historical Prices', color='blue')
+    axs[0].plot(prediction_dates[-252:], predicted_close_values[-252:], label='Predicted Prices', color='red', linestyle='--')
     axs[0].set_title(
         f"{ticker} Close Prices & Forecast: ${final_close_10:.2f} [{close_pct_change:.2f}%]\nPosition: {position_category.upper()}",
         fontdict=fontdict
@@ -89,8 +89,8 @@ def plot_historical_with_predictions(ticker, position_category, actual_data, pre
     axs[0].grid()
 
     if 'vclose' in actual_data.columns:
-        axs[1].plot(actual_data.index, actual_data['vclose'], label='Historical Volatility', color='blue')
-    axs[1].plot(prediction_dates, predicted_volatility_values, label='Predicted Volatility', color='red', linestyle='--')
+        axs[1].plot(actual_data.index[-252:], actual_data['vclose'][-252:], label='Historical Volatility', color='blue')
+    axs[1].plot(prediction_dates[-252:], predicted_volatility_values[-252:], label='Predicted Volatility', color='red', linestyle='--')
     axs[1].set_title(
         f"{ticker} Volatility & Forecast: {final_volatility_10:.2f}% [{volatility_pct_change:.2f}%]",
         fontdict=fontdict
