@@ -37,7 +37,7 @@ class Stock42():
             'HD','CVX','PEP','MCD','CSCO',
             'COST','TMO','ADBE','DIS','WFC',
             'KR','MCK','T','CIG','CAH',
-            'ELV','WBA','VZ','PSX',  # got rid of MRO, it changed exchanges and no longer
+            'ELV','WBA','VZ','PSX', 'MRO',
             'UPS','DELL','LOW','ADM',
             'GE','IBM','MET','PRU','RTX',
             'HUM','COR','VLO','CNC','TJX',
@@ -233,38 +233,97 @@ class Stock42():
         AllData['WasUp'] = tar
         self.AllData = AllData
         return
-
-    def getDat(self,symbol):
+    def getDat(self, symbol):
         contract = Stock(symbol, 'SMART', 'USD')
-        self.ib.qualifyContracts(contract)
-        # Hist OLHCV data
-        self.historical_data = self.ib.reqHistoricalData(
-            contract, 
-            endDateTime='',
-            barSizeSetting='1 day', 
-            durationStr=self.trainDuration, 
-            whatToShow='ADJUSTED_LAST',
-            useRTH=True,
+        
+        try:
+            # Qualify contract
+            self.ib.qualifyContracts(contract)
+        except Exception as e:
+            print(f"Error qualifying contract for {symbol}: {e}")
+            return  # Skip this equity and continue
+
+        try:
+            # Historical OHLC data
+            self.historical_data = self.ib.reqHistoricalData(
+                contract,
+                endDateTime='',
+                barSizeSetting='1 day',
+                durationStr=self.trainDuration,
+                whatToShow='ADJUSTED_LAST',
+                useRTH=True,
             )
-        AllData = util.df(self.historical_data)
-        AllData=AllData.set_index(AllData['date'],drop=True)
-        # Volatility
-        IV_historical_data = self.ib.reqHistoricalData(
-            contract, 
-            endDateTime='',
-            barSizeSetting='1 day', 
-            durationStr=self.trainDuration, 
-            whatToShow='OPTION_IMPLIED_VOLATILITY',
-            useRTH=True,
+            AllData = util.df(self.historical_data)
+            AllData = AllData.set_index(AllData['date'], drop=True)
+        except Exception as e:
+            print(f"Error retrieving OHLC data for {symbol}: {e}")
+            return  # Skip this equity and continue
+
+        try:
+            # Implied Volatility data
+            IV_historical_data = self.ib.reqHistoricalData(
+                contract,
+                endDateTime='',
+                barSizeSetting='1 day',
+                durationStr=self.trainDuration,
+                whatToShow='OPTION_IMPLIED_VOLATILITY',
+                useRTH=True,
             )
-        AD_IV = util.df(IV_historical_data)
-        AD_IV=AD_IV.set_index(AD_IV['date'], drop=True)
-        AD_IV=AD_IV.drop(columns=['barCount','volume'])
-        AD_IV=AD_IV.rename(columns={'open':'vopen','high':'vhigh','low':'vlow','close':'vclose','average':'vaverage'})
-        AllData[['vclose','vopen','vhigh','vlow','vaverage']] = AD_IV[['vclose','vopen','vhigh','vlow','vaverage']]
-        AllData=AllData.drop(columns=['date','barCount','vaverage','average']) # Drop average and vaverage because these are not accessible in live data
-        self.AllData = AllData
-        return
+            if IV_historical_data is None:
+                raise ValueError("No data returned for implied volatility.")
+
+            AD_IV = util.df(IV_historical_data)
+            AD_IV = AD_IV.set_index(AD_IV['date'], drop=True)
+            AD_IV = AD_IV.drop(columns=['barCount', 'volume'])
+            AD_IV = AD_IV.rename(
+                columns={'open': 'vopen', 'high': 'vhigh', 'low': 'vlow', 'close': 'vclose', 'average': 'vaverage'}
+            )
+            AllData[['vclose', 'vopen', 'vhigh', 'vlow', 'vaverage']] = AD_IV[['vclose', 'vopen', 'vhigh', 'vlow', 'vaverage']]
+        except Exception as e:
+            print(f"Error retrieving implied volatility data for {symbol}: {e}")
+            # Log the equity and continue with the next one
+            with open("failed_equities.log", "a") as log_file:
+                log_file.write(f"{symbol}: {e}\n")
+            return
+
+        try:
+            # Clean up data
+            AllData = AllData.drop(columns=['date', 'barCount', 'vaverage', 'average'])  # Drop unused columns
+            self.AllData = AllData
+        except Exception as e:
+            print(f"Error cleaning up data for {symbol}: {e}")
+            return
+    # def getDat(self,symbol):
+    #     contract = Stock(symbol, 'SMART', 'USD')
+    #     self.ib.qualifyContracts(contract)
+    #     # Hist OLHCV data
+    #     self.historical_data = self.ib.reqHistoricalData(
+    #         contract, 
+    #         endDateTime='',
+    #         barSizeSetting='1 day', 
+    #         durationStr=self.trainDuration, 
+    #         whatToShow='ADJUSTED_LAST',
+    #         useRTH=True,
+    #         )
+    #     AllData = util.df(self.historical_data)
+    #     AllData=AllData.set_index(AllData['date'],drop=True)
+    #     # Volatility
+    #     IV_historical_data = self.ib.reqHistoricalData(
+    #         contract, 
+    #         endDateTime='',
+    #         barSizeSetting='1 day', 
+    #         durationStr=self.trainDuration, 
+    #         whatToShow='OPTION_IMPLIED_VOLATILITY',
+    #         useRTH=True,
+    #         )
+    #     AD_IV = util.df(IV_historical_data)
+    #     AD_IV=AD_IV.set_index(AD_IV['date'], drop=True)
+    #     AD_IV=AD_IV.drop(columns=['barCount','volume'])
+    #     AD_IV=AD_IV.rename(columns={'open':'vopen','high':'vhigh','low':'vlow','close':'vclose','average':'vaverage'})
+    #     AllData[['vclose','vopen','vhigh','vlow','vaverage']] = AD_IV[['vclose','vopen','vhigh','vlow','vaverage']]
+    #     AllData=AllData.drop(columns=['date','barCount','vaverage','average']) # Drop average and vaverage because these are not accessible in live data
+    #     self.AllData = AllData
+    #     return
 
 
     
