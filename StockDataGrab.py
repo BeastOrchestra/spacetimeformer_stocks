@@ -37,7 +37,7 @@ class Stock42():
             'HD','CVX','PEP','MCD','CSCO',
             'COST','TMO','ADBE','DIS','WFC',
             'KR','MCK','T','CIG','CAH',
-            'ELV','WBA','VZ','PSX', 'MRO',
+            'ELV','WBA','VZ','PSX',
             'UPS','DELL','LOW','ADM',
             'GE','IBM','MET','PRU','RTX',
             'HUM','COR','VLO','CNC','TJX',
