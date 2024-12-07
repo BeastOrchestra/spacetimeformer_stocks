@@ -337,7 +337,7 @@ def formatOutput(tops):  # Revised
     ShortVol = VolDump[['Price_PrctDelta', 'Volatility_PrctDelta']].sort_values(by='Volatility_PrctDelta', ascending=True)
 
     # Generate tickers.txt file based on filtered data
-    generate_tickers_file(Longs, Shorts, LongVol, ShortVol, tops=5, eqThresh=0.2, optThresh=0.5)
+    generate_tickers_file(Longs, Shorts, LongVol, ShortVol, tops=5, eqThresh=0.2, optThresh=0.6)
 ###
     # eqThresh = .2
     # print('Long: ', Longs[Longs['Price_PrctDelta'] > eqThresh].Price_PrctDelta[:tops])
@@ -411,7 +411,7 @@ def main(args):
         folder = 'spacetimeformer/data/oos'
         xt_holder = []  # Initialize xt_holder as an empty list to hold tensors
         for filename in os.listdir(folder):
-            print(filename)
+            # print(filename)
             if filename.endswith('.csv'):  # Check if the file ends with '.csv'
                 filepath = os.path.join(folder, filename)
                 dataset = TimeSeriesDataset_ContextOnly(folder_name=folder, file_name=filename, context_length=args.context_points)
