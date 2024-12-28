@@ -56,7 +56,7 @@ class Stock42():
         self.InputLength = 252
         self.bins = 10 # Also a default for histogram
         self.extraBins = 10
-        self.lookback = 65 # [22, 65, 130, 22*9, 252] # M, Q, H, 3/4Y, Y
+        self.lookback = 252 # [22, 65, 130, 22*9, 252] # M, Q, H, 3/4Y, Y
         # self.ul = 31.437988662719725
         # self.ll = -9.06309299468994
         self.maxPositions=1 # Should be set as a global parameter
